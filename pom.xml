@@ -6,11 +6,13 @@
     <groupId>men.sbb8</groupId>
     <artifactId>ss-cloud</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
     <name>ss-cloud</name>
     <description>ss-cloud</description>
 
     <modules>
         <module>ss-common</module>
+        <module>ss-web-starter</module>
         <module>ss-grpc-starter</module>
     </modules>
 
@@ -21,18 +23,5 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
 
 </project>

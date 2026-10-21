@@ -1,10 +1,11 @@
 package men.sbb8.web.starter.dto.resp;
 
-import com.hkx.exchange.common.error.CommonCode;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanContext;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import men.sbb8.web.starter.error.BusinessException;
+import men.sbb8.web.starter.error.CommonCode;
+import org.slf4j.MDC;
 
 /**
  * 响应体
@@ -33,8 +34,8 @@ public class Resp<T> {
         this.data = data;
         this.code = code;
         this.msg = msg;
-        SpanContext ctx = Span.current().getSpanContext();
-        this.traceId = ctx.isValid() ? ctx.getTraceId() : null;
+        // Micrometer Tracing / OpenTelemetry 桥接会把 traceId 写入 MDC，避免对 OTel 的硬依赖
+        this.traceId = MDC.get("traceId");
     }
 
     /**
@@ -60,10 +61,23 @@ public class Resp<T> {
         return new Resp<>(t, rawCode, msg);
     }
 
+    @JsonIgnore
     public boolean isSuccess() {
         return CommonCode.SUCCESS.name().equalsIgnoreCase(this.code);
     }
 
+    /**
+     * 取出 data，响应不是成功码时抛 {@link BusinessException}。
+     * 用于 HTTP Service Client 接口返回 {@code Resp<T>} 之后的解包
+     */
+    public T unwrap() {
+        if (isFail()) {
+            throw new BusinessException(code, msg);
+        }
+        return data;
+    }
+
+    @JsonIgnore
     public boolean isFail() {
         return !isSuccess();
     }

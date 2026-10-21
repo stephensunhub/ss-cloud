@@ -1,0 +1,34 @@
+# ss-web-starter 默认配置（最低优先级，应用配置可覆盖）
+server:
+  shutdown: graceful
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  http:
+    clients:
+      connect-timeout: 3s
+      read-timeout: 30s
+  jackson:
+    # 容错：JSON 中有 Bean 没有的属性不报错
+    deserialization:
+      fail-on-unknown-properties: false
+    time-zone: UTC
+    default-property-inclusion: non_null
+  mvc:
+    # @RequestParam / @PathVariable 的时间类型统一按 ISO-8601 绑定
+    format:
+      date: iso
+      date-time: iso
+      time: iso
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+springdoc:
+  api-docs:
+    path: /v3/api-docs
