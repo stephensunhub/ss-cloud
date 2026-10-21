@@ -19,7 +19,7 @@ import java.io.IOException;
  */
 public class SsWebEnvironmentPostProcessor implements EnvironmentPostProcessor {
 
-    private static final String DEFAULTS = "META-INF/ss-web-defaults.yaml";
+    static final String DEFAULTS = "META-INF/ss-web-defaults.yaml";
 
     @Override
     public void postProcessEnvironment(@NonNull ConfigurableEnvironment environment,
