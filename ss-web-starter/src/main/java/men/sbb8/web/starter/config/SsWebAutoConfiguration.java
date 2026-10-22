@@ -2,10 +2,13 @@ package men.sbb8.web.starter.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import men.sbb8.web.starter.dto.UserInfo;
 import men.sbb8.web.starter.handler.GlobalExceptionHandler;
 import men.sbb8.web.starter.handler.ResponseWrapAdvice;
+import men.sbb8.web.starter.handler.ResponseWrapOperationCustomizer;
 import men.sbb8.web.starter.resolver.UserInfoArgumentResolver;
 import org.jspecify.annotations.NonNull;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -57,6 +60,18 @@ public class SsWebAutoConfiguration {
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass(OpenAPI.class)
     static class OpenApiConfiguration {
+
+        static {
+            // UserInfo 来自网关请求头，不是接口的请求参数，不出现在文档里
+            SpringDocUtils.getConfig().addRequestWrapperToIgnore(UserInfo.class);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean
+        @ConditionalOnProperty(prefix = "ss.web.response-wrap", name = "enabled", matchIfMissing = true)
+        public ResponseWrapOperationCustomizer responseWrapOperationCustomizer() {
+            return new ResponseWrapOperationCustomizer();
+        }
 
         @Bean
         @ConditionalOnMissingBean

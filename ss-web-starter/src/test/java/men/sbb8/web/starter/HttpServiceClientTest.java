@@ -65,7 +65,7 @@ class HttpServiceClientTest {
         assertTrue(resp.isFail());
         assertEquals("PARAMS_ERROR", resp.getCode());
         BusinessException e = assertThrows(BusinessException.class, resp::unwrap);
-        assertEquals("PARAMS_ERROR", e.code);
+        assertEquals("PARAMS_ERROR", e.getCode());
     }
 
     @Test

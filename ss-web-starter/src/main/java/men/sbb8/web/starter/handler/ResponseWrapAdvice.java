@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.lang.reflect.Method;
 import java.util.Objects;
 
 /**
@@ -37,20 +38,26 @@ public class ResponseWrapAdvice implements ResponseBodyAdvice<Object>, Ordered {
     @Override
     public boolean supports(MethodParameter returnType,
                             @NonNull Class<? extends HttpMessageConverter<?>> converterType) {
-        Class<?> controller = returnType.getContainingClass();
+        return shouldWrap(returnType.getContainingClass(),
+                Objects.requireNonNull(returnType.getMethod()), returnType.getParameterType());
+    }
+
+    /**
+     * 某个控制器方法的返回值是否会被包装为 {@link Resp}。运行期的包装与 OpenAPI 文档共用这一条规则，保证两者一致
+     */
+    public static boolean shouldWrap(Class<?> controller, Method method, Class<?> returnType) {
         String pkg = controller.getPackageName();
         if (pkg.startsWith("org.springframework.") || pkg.startsWith("org.springdoc.")) {
             return false;
         }
-        if (AnnotatedElementUtils.hasAnnotation(Objects.requireNonNull(returnType.getMethod()), RawResponse.class)
+        if (AnnotatedElementUtils.hasAnnotation(method, RawResponse.class)
                 || AnnotatedElementUtils.hasAnnotation(controller, RawResponse.class)) {
             return false;
         }
-        Class<?> type = returnType.getParameterType();
-        return !Resp.class.isAssignableFrom(type)
-                && !ProblemDetail.class.isAssignableFrom(type)
-                && !Resource.class.isAssignableFrom(type)
-                && type != byte[].class;
+        return !Resp.class.isAssignableFrom(returnType)
+                && !ProblemDetail.class.isAssignableFrom(returnType)
+                && !Resource.class.isAssignableFrom(returnType)
+                && returnType != byte[].class;
     }
 
     @Override

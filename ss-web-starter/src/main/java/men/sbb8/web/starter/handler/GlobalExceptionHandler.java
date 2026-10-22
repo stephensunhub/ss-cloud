@@ -27,19 +27,22 @@ import java.util.Objects;
 /**
  * 全局异常处理，统一输出 {@link Resp}。
  * 业务异常使用其自带 HTTP 状态码（默认 200），参数错误 400，未知异常 500 且不向前端暴露异常详情。
+ * 优先级最低：应用自己的 {@code @RestControllerAdvice} 能先于它处理异常，从而覆盖这里的约定。
  *
  * @author Stephen
  */
 @Slf4j
 @RestControllerAdvice
-@Order(Ordered.HIGHEST_PRECEDENCE + 100)
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Resp<Void>> handleBusiness(BusinessException e) {
-        log.warn("业务异常: code={}, msg={}", e.code, e.msg);
-        String msg = e.msg == null || e.msg.isEmpty() ? e.getMessage() : e.msg;
-        return ResponseEntity.status(e.httpStatus).body(Resp.fail(e.code, msg));
+        log.warn("业务异常: code={}, msg={}", e.getCode(), e.getMsg());
+        if (e.getCause() != null) {
+            log.error("业务异常的原始原因", e.getCause());
+        }
+        return ResponseEntity.status(e.getHttpStatus()).body(Resp.fail(e.getCode(), e.getMsg()));
     }
 
     /**
