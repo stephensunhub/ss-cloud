@@ -1,10 +1,7 @@
 # ss-grpc-starter 默认配置（最低优先级，应用配置可覆盖）
-# 与 Spring Boot 默认值相同的项（优雅停机 30s、健康检查、观测指标）不重复配置
+# 与 Spring Boot 默认值相同的项（gRPC 优雅停机 30s、健康检查、观测指标）不重复配置
+# 不配置 spring.threads.virtual.enabled：Boot 的 gRPC 服务端不读取它，配了也不生效
 spring:
-  threads:
-    virtual:
-      # JDK 21+ 推荐使用虚拟线程；个别服务（如低延迟场景）可设为 false 关闭
-      enabled: true
   lifecycle:
     timeout-per-shutdown-phase: 30s
   grpc:

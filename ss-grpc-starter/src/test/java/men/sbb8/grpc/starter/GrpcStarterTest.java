@@ -51,7 +51,7 @@ class GrpcStarterTest {
         ErrorDetail detail = ErrorDetails.find(e).orElseThrow();
         assertEquals("NAME_TAKEN", detail.getCode());
         assertEquals("名称 bob 已被占用", detail.getMsg());
-        assertEquals("bob", detail.getParamMap().get("name"));
+        assertEquals("bob", detail.getParamsMap().get("name"));
         assertEquals("名称 bob 已被占用", e.getStatus().getDescription());
     }
 
@@ -94,6 +94,33 @@ class GrpcStarterTest {
     }
 
     @Test
+    void businessExceptionWrappedInAnotherExceptionIsStillRecognised() {
+        StatusRuntimeException e = fail("wrapped");
+        assertEquals(Status.Code.ALREADY_EXISTS, e.getStatus().getCode());
+        assertEquals("名称 wrapped 已被占用", ErrorDetails.find(e).orElseThrow().getMsg());
+    }
+
+    @Test
+    void onErrorWithBusinessExceptionIsConverted() {
+        StatusRuntimeException e = fail("onerror");
+        assertEquals(Status.Code.INVALID_ARGUMENT, e.getStatus().getCode());
+        assertEquals("PARAMS_ERROR", ErrorDetails.find(e).orElseThrow().getCode());
+    }
+
+    @Test
+    void rawServerSideStatusesDoNotLeakDescriptions() {
+        StatusRuntimeException internal = fail("leak-internal");
+        assertEquals(Status.Code.INTERNAL, internal.getStatus().getCode());
+        assertEquals("SYSTEM_ERROR", ErrorDetails.find(internal).orElseThrow().getCode());
+        assertFalse(String.valueOf(internal.getStatus().getDescription()).contains("password"));
+
+        StatusRuntimeException unavailable = fail("wrapped-status");
+        assertEquals(Status.Code.UNAVAILABLE, unavailable.getStatus().getCode());
+        assertEquals("DOWNSTREAM_ERROR", ErrorDetails.find(unavailable).orElseThrow().getCode());
+        assertFalse(String.valueOf(unavailable.getStatus().getDescription()).contains("jdbc"));
+    }
+
+    @Test
     void clientSideTranslation() {
         GrpcRemoteException e = assertThrows(GrpcRemoteException.class,
                 () -> GrpcCalls.call(() -> stub.hello(HelloRequest.newBuilder().setName("business").build())));
@@ -118,7 +145,6 @@ class GrpcStarterTest {
     @Test
     void defaultsApplied() {
         assertEquals("9001", env.getProperty("spring.grpc.server.port"));
-        assertEquals("true", env.getProperty("spring.threads.virtual.enabled"));
         assertTrue(env.getProperty("management.endpoints.web.exposure.include", "").contains("prometheus"));
     }
 }

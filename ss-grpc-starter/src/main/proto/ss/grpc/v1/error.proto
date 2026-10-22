@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ss.grpc;
+package ss.grpc.v1;
 
 option java_multiple_files = true;
 option java_package = "men.sbb8.grpc.starter.proto";
@@ -14,5 +14,5 @@ message ErrorDetail {
   // 已渲染好参数的错误消息
   string msg = 2;
   // 渲染消息用到的参数
-  map<string, string> param = 3;
+  map<string, string> params = 3;
 }

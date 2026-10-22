@@ -54,6 +54,24 @@ class TestApp {
             switch (request.getName()) {
                 case "business" -> throw new GrpcBusinessException(DemoCode.NAME_TAKEN, Map.of("name", "bob"));
                 case "common" -> throw new GrpcBusinessException(CommonCode.PARAMS_ERROR);
+                case "wrapped" -> throw new java.util.concurrent.CompletionException(
+                        new GrpcBusinessException(DemoCode.NAME_TAKEN, Map.of("name", "wrapped")));
+                case "wrapped-status" -> throw new java.util.concurrent.CompletionException(
+                        Status.UNAVAILABLE.withDescription("jdbc:mysql://10.0.0.5").asRuntimeException());
+                case "onerror" -> {
+                    responseObserver.onError(new GrpcBusinessException(CommonCode.PARAMS_ERROR));
+                    return;
+                }
+                case "leak-internal" -> throw Status.INTERNAL.withDescription("db password=xxx").asRuntimeException();
+                case "slow" -> {
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    responseObserver.onNext(HelloReply.newBuilder().setMessage("slow done").build());
+                    responseObserver.onCompleted();
+                }
                 case "boom" -> throw new IllegalStateException("secret internal detail");
                 case "status" -> throw Status.NOT_FOUND.withDescription("raw").asRuntimeException();
                 case "downstream-business" -> throw remote(ErrorDetails.toStatusRuntimeException(

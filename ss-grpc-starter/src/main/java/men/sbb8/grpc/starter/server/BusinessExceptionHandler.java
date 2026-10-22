@@ -1,6 +1,5 @@
 package men.sbb8.grpc.starter.server;
 
-import io.grpc.Status;
 import io.grpc.StatusException;
 import lombok.extern.slf4j.Slf4j;
 import men.sbb8.grpc.starter.error.CommonCode;
@@ -12,7 +11,6 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.grpc.server.exception.GrpcExceptionHandler;
 
 import java.util.Map;
-import java.util.Set;
 
 /**
  * 业务异常转 gRPC 状态：
@@ -21,26 +19,26 @@ import java.util.Set;
  *     <li>{@link GrpcRemoteException}：下游返回了业务错误且属于调用方错误类（参数、权限、不存在等）时原样透传；
  *     其余（下游内部错误、不可用、超时、无详情）统一为 UNAVAILABLE，不暴露下游细节</li>
  * </ul>
+ * 业务异常被 CompletionException 等包装时，沿 cause 链查找。
  *
  * @author Stephen
  */
 @Slf4j
 public class BusinessExceptionHandler implements GrpcExceptionHandler {
 
-    private static final Set<Status.Code> PASS_THROUGH = Set.of(
-            Status.Code.INVALID_ARGUMENT, Status.Code.NOT_FOUND, Status.Code.ALREADY_EXISTS,
-            Status.Code.PERMISSION_DENIED, Status.Code.UNAUTHENTICATED, Status.Code.FAILED_PRECONDITION,
-            Status.Code.OUT_OF_RANGE);
-
     @Override
     public @Nullable StatusException handleException(Throwable exception) {
-        if (exception instanceof GrpcBusinessException e) {
+        GrpcBusinessException business = CauseChain.find(exception, GrpcBusinessException.class);
+        if (business != null) {
+            GrpcBusinessException e = business;
             log.warn("业务异常: code={}, msg={}", e.getCode().code(), e.getMessage());
             return ErrorDetails.toStatusException(e.getCode(), e.getParams());
         }
-        if (exception instanceof GrpcRemoteException e) {
+        GrpcRemoteException remote = CauseChain.find(exception, GrpcRemoteException.class);
+        if (remote != null) {
+            GrpcRemoteException e = remote;
             ErrorDetail detail = e.getDetail();
-            if (detail != null && PASS_THROUGH.contains(e.getStatus().getCode())) {
+            if (detail != null && CallerStatuses.isCallerError(e.getStatus().getCode())) {
                 log.warn("下游业务错误: status={}, code={}, msg={}", e.getStatus().getCode(), detail.getCode(), detail.getMsg());
                 return e.getStatus().withDescription(detail.getMsg()).asException(ErrorDetails.trailers(detail));
             }

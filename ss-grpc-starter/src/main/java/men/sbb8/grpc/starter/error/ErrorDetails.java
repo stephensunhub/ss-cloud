@@ -33,7 +33,7 @@ public final class ErrorDetails {
         return ErrorDetail.newBuilder()
                 .setCode(code.code())
                 .setMsg(render(code.msg(), params))
-                .putAllParam(stringParams)
+                .putAllParams(stringParams)
                 .build();
     }
 
