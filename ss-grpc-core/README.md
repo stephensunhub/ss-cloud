@@ -41,7 +41,7 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
 
 没有 web 容器，所以 starter 用 JDK 自带的 `HttpServer` 在独立端口提供 `/metrics`（默认 `:9091/metrics`），
 由两个守护线程处理，不占用 gRPC 和业务线程。内容包括 JVM 指标和 Boot 内置的 gRPC 观测指标
-（`grpc_server_seconds`、`grpc_client_seconds` 等，已开启直方图，所有指标带 `application` 标签）。
+（`grpc_server_seconds`、`grpc_client_seconds` 等，耗时已配置固定的 11 个桶（5ms–10s，可跨实例聚合分位数），所有指标带 `application` 标签）。
 
 | 配置 | 默认值 | 说明 |
 |---|---|---|
@@ -49,7 +49,7 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
 | `ss.grpc.metrics.prometheus.port` | `9091` | 0–65535，超出范围启动失败；端口被占用时也会失败并给出提示；`0` 为随机端口 |
 | `ss.grpc.metrics.prometheus.path` | `/metrics` | 抓取路径，必须以 `/` 开头，否则启动失败 |
 
-**与 `ss-web-starter` 在 prod 下的抓取地址一致**（都是 `:9091/metrics`，指标都带 `application` 标签、耗时都有直方图），
+**与 `ss-web-starter` 在 prod 下的抓取地址一致**（都是 `:9091/metrics`，指标都带 `application` 标签、耗时桶一致），
 Prometheus 对所有服务可以用同一份抓取配置。
 
 端口只是 Pod 内的端口；用 ServiceMonitor / PodMonitor 或 Pod 注解让 Prometheus 抓取。

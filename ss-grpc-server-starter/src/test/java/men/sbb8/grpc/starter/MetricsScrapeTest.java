@@ -48,6 +48,22 @@ class MetricsScrapeTest {
         assertTrue(body.contains("grpc_server_seconds_bucket"), "gRPC 服务端耗时应有直方图桶");
         assertTrue(body.contains("grpc_client_seconds_bucket"), "gRPC 客户端耗时应有直方图桶");
         assertTrue(body.contains("application=\"grpc-test-app\""), "指标应带 application 标签");
+        // 固定 11 个桶（5ms–10s）加 +Inf，而不是 60 多个：控制时间序列数量
+        java.util.List<String> expected = java.util.List.of("0.005", "0.01", "0.025", "0.05", "0.1", "0.25", "0.5",
+                "1.0", "2.5", "5.0", "10.0", "+Inf");
+        for (String metric : new String[]{"grpc_server_seconds_bucket", "grpc_client_seconds_bucket"}) {
+            java.util.Set<String> boundaries = new java.util.TreeSet<>(java.util.Comparator.comparingDouble(
+                    b -> b.equals("+Inf") ? Double.MAX_VALUE : Double.parseDouble(b)));
+            for (String line : body.split("\n")) {
+                if (line.startsWith(metric)) {
+                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("le=\"([^\"]+)\"").matcher(line);
+                    if (m.find()) {
+                        boundaries.add(m.group(1));
+                    }
+                }
+            }
+            assertEquals(expected, new java.util.ArrayList<>(boundaries), metric);
+        }
     }
 
     @Test

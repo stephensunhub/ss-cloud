@@ -158,7 +158,7 @@ management:
 
 - 抓取地址：非 prod 在业务端口 `/actuator/prometheus`；**prod 为 `:9091/metrics`**（与 gRPC 服务的抓取地址相同）
 - 所有指标带 `application` 标签（取自 `spring.application.name`）
-- `http.server.requests`、`http.client.requests` 已开启直方图（范围 1ms–10s），可跨实例聚合 p95 / p99
+- `http.server.requests`、`http.client.requests` 已配置固定的 11 个桶（5ms、10ms、25ms、50ms、100ms、250ms、500ms、1s、2.5s、5s、10s），可跨实例聚合 p95 / p99；桶少是为了控制时间序列数量（比默认直方图的 60 多个桶少 5 倍以上），要更细的精度可自行配置 `management.metrics.distribution.slo.*` 或 `percentiles-histogram.*`
 - 要换端口：`management.server.port`；非 prod 想用同样的路径，可设 `management.endpoints.web.base-path=/` 和
   `management.endpoints.web.path-mapping.prometheus=metrics`
 

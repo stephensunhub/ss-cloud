@@ -14,14 +14,8 @@ management:
       # 所有指标带上服务名，便于在 Prometheus 里按服务过滤
       application: ${spring.application.name:application}
     distribution:
-      # gRPC 耗时默认只有 count/sum/max，开启直方图后才能跨实例聚合出 p95/p99
-      percentiles-histogram:
-        grpc.server: true
-        grpc.client: true
-      # 限定桶的范围，控制时间序列数量
-      minimum-expected-value:
-        grpc.server: 1ms
-        grpc.client: 1ms
-      maximum-expected-value:
-        grpc.server: 10s
-        grpc.client: 10s
+      # gRPC 耗时默认只有 count/sum/max，配上固定的桶后才能跨实例聚合出 p95/p99。
+      # 只取 11 个桶，而不是 percentiles-histogram 的 60 多个：方法 × 状态的组合多时，时间序列数量差 5 倍以上
+      slo:
+        grpc.server: 5ms,10ms,25ms,50ms,100ms,250ms,500ms,1s,2500ms,5s,10s
+        grpc.client: 5ms,10ms,25ms,50ms,100ms,250ms,500ms,1s,2500ms,5s,10s

@@ -26,7 +26,7 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 
 - **默认配置**放在各模块的 `META-INF/*-defaults.yaml`，通过 `EnvironmentPostProcessor` 以**最低优先级**加载：
   应用的 `application.yml`、环境变量、命令行都可以覆盖。激活 `prod` / `production` 环境时有一组更严格的默认值
-- **指标**：Prometheus 抓取，所有指标带 `application` 标签，耗时指标开启直方图。
+- **指标**：Prometheus 抓取，所有指标带 `application` 标签，耗时指标配置了固定的 11 个桶（5ms–10s），可跨实例聚合分位数。
   web（prod）和 gRPC 的抓取地址相同，都是 **`:9091/metrics`**，Prometheus 对所有服务用同一份配置
 - **链路追踪**：OTLP/HTTP 导出，可对接 Jaeger、Tempo 或 OTel Collector；
   配置了 `management.opentelemetry.tracing.export.otlp.endpoint` 才会导出，prod 采样率默认 0.1
