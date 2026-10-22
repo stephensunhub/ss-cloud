@@ -49,6 +49,12 @@ class TestApp {
     @Service
     static class GreeterService extends GreeterGrpc.GreeterImplBase {
 
+        private final io.micrometer.tracing.Tracer tracer;
+
+        GreeterService(io.micrometer.tracing.Tracer tracer) {
+            this.tracer = tracer;
+        }
+
         @Override
         public void hello(HelloRequest request, StreamObserver<HelloReply> responseObserver) {
             switch (request.getName()) {
@@ -70,6 +76,12 @@ class TestApp {
                         Thread.currentThread().interrupt();
                     }
                     responseObserver.onNext(HelloReply.newBuilder().setMessage("slow done").build());
+                    responseObserver.onCompleted();
+                }
+                case "trace" -> {
+                    // 服务端当前 span 所在的 trace，用来验证调用链是否从客户端延续过来
+                    responseObserver.onNext(HelloReply.newBuilder()
+                            .setMessage(tracer.currentSpan().context().traceId()).build());
                     responseObserver.onCompleted();
                 }
                 case "boom" -> throw new IllegalStateException("secret internal detail");

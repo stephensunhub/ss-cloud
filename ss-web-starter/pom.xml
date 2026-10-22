@@ -47,6 +47,22 @@
             <artifactId>micrometer-tracing-bridge-otel</artifactId>
         </dependency>
 
+        <!-- 链路追踪导出（OTLP/HTTP，可对接 Jaeger / Tempo / OTel Collector）：用 JDK 自带的 HTTP 客户端发送，不引入 OkHttp -->
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.opentelemetry</groupId>
+                    <artifactId>opentelemetry-exporter-sender-okhttp</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-sender-jdk</artifactId>
+        </dependency>
+
         <!-- 可选能力：使用方自己引入对应依赖才会生效 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -117,6 +117,14 @@ class HttpServiceClientTest {
     }
 
     @Test
+    void traceContinuesAcrossHttpServiceClientCalls() {
+        Map<String, String> ids = RestClient.create("http://localhost:" + port).get().uri("/relay-trace")
+                .retrieve().body(new ParameterizedTypeReference<Resp<Map<String, String>>>() {}).unwrap();
+        assertTrue(ids.get("caller").matches("[0-9a-f]{32}"), ids.toString());
+        assertEquals(ids.get("caller"), ids.get("callee"));
+    }
+
+    @Test
     void userHeadersArePropagatedOnlyInsideARequest() {
         UserInfo outside = client.me().unwrap();
         assertNull(outside.userId());

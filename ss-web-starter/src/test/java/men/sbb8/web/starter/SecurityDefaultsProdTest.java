@@ -24,6 +24,14 @@ class SecurityDefaultsProdTest {
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isNotFound());
     }
 
+    @Autowired
+    org.springframework.core.env.Environment env;
+
+    @Test
+    void tracingSampledAtTenPercentInProd() {
+        org.junit.jupiter.api.Assertions.assertEquals("0.1", env.getProperty("management.tracing.sampling.probability"));
+    }
+
     @Test
     void userInfoRequiredWhenConfigured() throws Exception {
         mvc.perform(get("/me")).andExpect(status().isUnauthorized());

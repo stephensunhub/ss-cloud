@@ -21,5 +21,6 @@ class ProdDefaultsTest {
     void reflectionOffAndStructuredLoggingInProd() {
         assertEquals("false", env.getProperty("spring.grpc.server.reflection.enabled"));
         assertEquals("ecs", env.getProperty("logging.structured.format.console"));
+        assertEquals("0.1", env.getProperty("management.tracing.sampling.probability"));
     }
 }

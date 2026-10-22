@@ -18,6 +18,10 @@ spring:
           readiness:
             include: readinessState
 management:
+  tracing:
+    sampling:
+      # 开发/测试环境全量采样；prod 默认 0.1（见 SsGrpcEnvironmentPostProcessor）
+      probability: 1.0
   metrics:
     tags:
       # 所有指标带上服务名，便于在 Prometheus 里按服务过滤

@@ -144,5 +144,6 @@ class GrpcStarterTest {
     @Test
     void defaultsApplied() {
         assertEquals("9001", env.getProperty("spring.grpc.server.port"));
+        assertEquals("1.0", env.getProperty("management.tracing.sampling.probability"));
     }
 }

@@ -116,6 +116,21 @@ class TestApp {
             return "unreachable";
         }
 
+        @Autowired
+        io.micrometer.tracing.Tracer tracer;
+
+        @GetMapping("/trace-id")
+        String traceId() {
+            return tracer.currentSpan().context().traceId();
+        }
+
+        /** 经声明式客户端调用自己的 /trace-id，验证调用链跨服务串联 */
+        @GetMapping("/relay-trace")
+        Map<String, String> relayTrace() {
+            return Map.of("caller", tracer.currentSpan().context().traceId(),
+                    "callee", demoClient.traceId().unwrap());
+        }
+
         @GetMapping("/ip")
         String ip() {
             return men.sbb8.web.starter.utils.WebUtils.getRemoteIp();

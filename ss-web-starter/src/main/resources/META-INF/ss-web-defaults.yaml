@@ -27,6 +27,10 @@ spring:
       date-time: iso
       time: iso
 management:
+  tracing:
+    sampling:
+      # 开发/测试环境全量采样；prod 默认 0.1（见 SsWebEnvironmentPostProcessor）
+      probability: 1.0
   endpoints:
     web:
       exposure:

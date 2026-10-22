@@ -25,6 +25,9 @@ interface DemoClient {
     @GetExchange("/no-such-path")
     Resp<Void> missing();
 
+    @GetExchange("/trace-id")
+    Resp<String> traceId();
+
     @GetExchange("/me")
     Resp<UserInfo> me();
 }
