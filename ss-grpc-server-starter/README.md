@@ -33,6 +33,32 @@ readinessProbe:
 存活 / 就绪状态一变化（启动完成、优雅停机开始等），会**立即**同步到 gRPC 健康服务，不等定时同步。
 所以启动完成后马上可探测，停机时就绪状态翻转后 k8s 马上停止派发流量。
 
+## 连接最长存活时间与滚动发布（k8s headless Service）
+
+默认 `spring.grpc.server.keepalive.connection.max-age: 10m`（Boot 默认是无限）。到期后服务端优雅地关闭连接
+（GOAWAY，`spring.grpc.server.keepalive.connection.grace-period` 默认 30s 内让进行中的请求完成），客户端随之**重新解析地址并重连**。
+
+**为什么必须设**：k8s 用 headless Service 做服务发现时，gRPC 客户端的 DNS 解析只在连接断开时才重新查询。
+不设的话，新扩容的 pod 要等到有连接因故障断开才会被客户端发现，一直没有流量，也无法把负载重新摊平。
+`ConnectionRecyclingTest` 在真实网络上验证了这一点：设了 max-age，客户端的解析器被要求重新解析，连接恢复后调用正常；
+不设就不会重新解析。
+
+怎么取舍：
+
+- 新 pod 被发现的延迟约等于 max-age：10 分钟是折中，扩缩容很频繁的服务可以调小（连接重建的代价很小）
+- **长连接的流式调用会在 `max-age + grace-period` 后被取消**（默认约 10 分半）。长时间订阅类的服务请把 max-age 调大
+  （如 `1h`），并让客户端在流被取消后重新订阅；想"关闭"不能设成 0，gRPC 不接受（`max connection age must be positive`）
+- 调用方依旧要配 `dns:///` 目标和 `round_robin`，见 `ss-grpc-client-starter/README.md`
+
+滚动发布时不丢请求，还需要 k8s 这一侧配合（k8s 的一般做法，**没有在真实集群里验证过**）：
+
+- 就绪状态在停机开始时立即翻转（见上文"健康检查"），k8s 马上停止派发新流量
+- pod 从 Service 的地址里摘除并传播到客户端的 DNS 缓存需要几秒（CoreDNS 默认缓存约 5 秒），期间客户端仍可能把请求发过来，
+  所以在 `preStop` 里先等待几秒再让进程收到 SIGTERM：`lifecycle.preStop.exec.command: ["sleep", "10"]`
+  （镜像里要有 `sleep`；较新的 k8s 版本支持不依赖镜像命令的 `preStop.sleep`）
+- `terminationGracePeriodSeconds` 要大于 preStop 的等待时间加上优雅停机时间（`spring.lifecycle.timeout-per-shutdown-phase`，
+  默认 30s），否则进程会被强制杀死
+
 ## 服务端异常转换
 
 - `GrpcBusinessException(业务码, 参数)` 转成该业务码对应的 gRPC 状态，`ErrorDetail` 放在 trailers 里；

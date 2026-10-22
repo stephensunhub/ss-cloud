@@ -56,6 +56,8 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 - **链路追踪**：OTLP/HTTP 导出，可对接 Jaeger、Tempo 或 OTel Collector；
   配置了 `management.opentelemetry.tracing.export.otlp.endpoint` 才会导出，prod 采样率默认 0.1
 - **健康检查**：web 用 actuator 的 HTTP 探针；gRPC 用 k8s 的 gRPC 探针（`grpc.health.v1`，`liveness` / `readiness`）
+- **gRPC 服务发现**：k8s 里用 headless Service（`dns:///`，`round_robin`），服务端默认设连接最长存活 10 分钟让客户端定期重新解析；
+  用法见 `ss-grpc-client-starter` 和 `ss-grpc-server-starter` 的 README
 - **错误**：web 返回 `Resp` 信封（可切换为 RFC 9457）；gRPC 用 gRPC 状态加 `ErrorDetail`。两者的业务码体系互相独立
 - **GraalVM 原生镜像**：已用 GraalVM 25 实测可用，但**必须按环境编译**，详见各模块 README 的"原生镜像"一节
 
