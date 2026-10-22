@@ -22,6 +22,31 @@
 
 gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和 gRPC 服务不放在同一个进程里。
 
+## 应用如何接入
+
+让应用继承 `ss-cloud` 作为父 POM（它自己继承 `spring-boot-starter-parent`，所以应用不需要再单独声明 Boot Parent），
+然后按需引入 starter，版本不用写：
+
+```xml
+<parent>
+    <groupId>men.sbb8</groupId>
+    <artifactId>ss-cloud</artifactId>
+    <version>2026.10.21.0</version>
+    <relativePath/>
+</parent>
+
+<dependencies>
+    <dependency>
+        <groupId>men.sbb8</groupId>
+        <artifactId>ss-web-starter</artifactId>
+    </dependency>
+</dependencies>
+```
+
+- **目前版本只能从本地构建安装**（在本仓库执行 `mvn install`），还没有发布到制品库，别的机器上的项目暂时引入不了
+- 目前**没有独立的 BOM**。如果某个服务已经有别的公司级 Parent、不能继承 `ss-cloud`，需要时再拆出 `ss-dependencies`，
+  让它能在自己的 Parent 下用 `<scope>import</scope>` 导入
+
 ## 共同约定
 
 - **默认配置**放在各模块的 `META-INF/*-defaults.yaml`，通过 `EnvironmentPostProcessor` 以**最低优先级**加载：
@@ -47,7 +72,9 @@ mvn clean verify
 
 ## 已定的设计决策
 
-- 不使用 Spring Cloud Alibaba；暂不引入服务发现和配置中心
+- 不使用 Spring Cloud Alibaba；暂不引入服务发现和配置中心。项目依赖 Consul，用到 Spring Cloud Consul 时要注意：
+  Spring Cloud BOM 已在父 POM 里导入但**目前没有任何模块使用**，而官方的 2025.1 列车对应 Boot 4.0.x，
+  暂无正式对应 Boot 4.1 的列车（下一条 2026.0 对应 Boot 4.2），引入前需先实测兼容性，或让 Boot 与列车对齐
 - HTTP 客户端用 `@HttpExchange` + `RestClient`，不用 Feign、不用手写 HTTP 客户端
 - Web 相关的封装（Jackson、Redis 序列化、JSON 持久化转换等）都在 `ss-web-starter`，gRPC 走 protobuf，不带 Jackson
 - 原有的 hkx-cloud4 项目只作参考，不在本仓库里修改
