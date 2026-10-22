@@ -84,6 +84,23 @@ class TestApp {
             return body;
         }
 
+        @GetMapping(value = "/plain", produces = "text/plain")
+        String plain() {
+            return "plain";
+        }
+
+        @GetMapping(value = "/json-str", produces = "application/json")
+        String jsonStr() {
+            return "text";
+        }
+
+        /** 下游 404（框架生成）经全局异常处理后对外应是 502，而不是 404 */
+        @GetMapping("/relay-missing")
+        String relayMissing() {
+            demoClient.missing();
+            return "unreachable";
+        }
+
         @GetMapping("/ip")
         String ip() {
             return men.sbb8.web.starter.utils.WebUtils.getRemoteIp();

@@ -1,5 +1,7 @@
 package men.sbb8.web.starter.dto;
 
+import java.time.Instant;
+
 /**
  * 网关透传的当前用户上下文，控制器方法声明该类型参数即可自动注入
  *
@@ -9,7 +11,7 @@ package men.sbb8.web.starter.dto;
  * @param clientType  客户端类型（X-Client）
  * @param language    语言（X-User-Language）
  * @param ip          请求 IP（X-Request-Ip）
- * @param requestTime 请求到达时间，毫秒时间戳
+ * @param requestTime 请求到达时间，时间点
  * @author Stephen
  */
 public record UserInfo(Integer channelId,
@@ -18,5 +20,5 @@ public record UserInfo(Integer channelId,
                        String clientType,
                        String language,
                        String ip,
-                       long requestTime) {
+                       Instant requestTime) {
 }

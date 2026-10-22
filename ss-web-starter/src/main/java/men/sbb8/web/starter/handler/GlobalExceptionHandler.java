@@ -13,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
@@ -46,17 +47,23 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 下游返回 4xx 且带 Resp 结构时透传其状态码、code、msg；其余（5xx、非 Resp 响应）统一 502，不暴露下游细节
+     * 下游返回 4xx 且带业务 Resp 时透传其状态码、code、msg；其余统一 502，不暴露下游细节：
+     * 5xx、非 Resp 响应，以及框架自己生成的 404/405/415 等（code 是状态名，如 NOT_FOUND，说明是我方调用路径或方式错了，不是业务结果）
      */
     @ExceptionHandler(RemoteCallException.class)
     public ResponseEntity<Resp<Void>> handleRemoteCall(RemoteCallException e) {
-        if (e.getStatus().is4xxClientError() && e.getCode() != null) {
+        if (e.getStatus().is4xxClientError() && e.getCode() != null && !isFrameworkError(e)) {
             log.warn("下游业务错误: {} code={}, msg={}", e.getMessage(), e.getCode(), e.getRemoteMsg());
             return ResponseEntity.status(e.getStatus()).body(Resp.fail(e.getCode(), e.getRemoteMsg()));
         }
-        log.error("下游调用失败: {}, body={}", e.getMessage(), e.getBody());
+        log.error("下游调用失败: {}, body={}", e.getMessage(), StringUtils.truncate(e.getBody(), 500));
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Resp.fail(HttpStatus.BAD_GATEWAY.name(), "下游服务异常"));
+    }
+
+    private static boolean isFrameworkError(RemoteCallException e) {
+        HttpStatus status = HttpStatus.resolve(e.getStatus().value());
+        return status != null && status.name().equals(e.getCode());
     }
 
     /**

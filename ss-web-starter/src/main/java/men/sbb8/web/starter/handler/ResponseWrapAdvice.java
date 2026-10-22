@@ -11,18 +11,23 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.lang.reflect.Method;
+import java.util.Collection;
 import java.util.Objects;
 
 /**
  * 把控制器返回值统一包装为 {@link Resp}。
- * Spring / springdoc 自带的接口不包装，方法或类标注 {@link RawResponse} 的不包装。
+ * Spring / springdoc 自带的接口不包装，方法或类标注 {@link RawResponse} 的不包装，
+ * 非 JSON 响应（显式 produces 为 text/plain 的 String、XML、图片等）也不包装。
  *
  * @author Stephen
  */
@@ -70,13 +75,36 @@ public class ResponseWrapAdvice implements ResponseBodyAdvice<Object>, Ordered {
         if (body instanceof Resp<?> || body instanceof ProblemDetail || body instanceof Resource) {
             return body;
         }
-        Resp<Object> wrapped = Resp.ok(body);
         if (body instanceof String) {
-            // String 由 StringHttpMessageConverter 输出，需自行序列化并声明 JSON
-            response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-            return jsonMapper.writeValueAsString(wrapped);
+            // 显式声明 produces 且都不是 JSON（text/plain 等）的接口，保持纯文本
+            if (!producesJson(request)) {
+                return body;
+            }
+            Resp<Object> wrapped = Resp.ok(body);
+            if (StringHttpMessageConverter.class.isAssignableFrom(selectedConverterType)) {
+                // String 由 StringHttpMessageConverter 原样输出，需自行序列化并声明 JSON
+                response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+                return jsonMapper.writeValueAsString(wrapped);
+            }
+            return wrapped;
         }
-        return wrapped;
+        // 只包装 JSON 响应，其他媒体类型（XML、图片、事件流等）保持原样
+        return isJson(selectedContentType) ? Resp.ok(body) : body;
+    }
+
+    private static boolean producesJson(ServerHttpRequest request) {
+        if (request instanceof ServletServerHttpRequest servletRequest
+                && servletRequest.getServletRequest()
+                .getAttribute(HandlerMapping.PRODUCIBLE_MEDIA_TYPES_ATTRIBUTE) instanceof Collection<?> producible
+                && !producible.isEmpty()) {
+            return producible.stream().anyMatch(type -> type instanceof MediaType mediaType && isJson(mediaType));
+        }
+        return true;
+    }
+
+    private static boolean isJson(MediaType type) {
+        return "application".equalsIgnoreCase(type.getType())
+                && ("json".equalsIgnoreCase(type.getSubtype()) || type.getSubtype().toLowerCase().endsWith("+json"));
     }
 
     @Override

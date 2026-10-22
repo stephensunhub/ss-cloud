@@ -94,6 +94,29 @@ class HttpServiceClientTest {
     }
 
     @Test
+    void downstreamFrameworkErrorsAreNotPassedThrough() {
+        RemoteCallException e = assertThrows(RemoteCallException.class, () -> client.missing());
+        assertEquals(404, e.getStatus().value());
+        assertEquals("NOT_FOUND", e.getCode());
+
+        RestClient plain = RestClient.builder().baseUrl("http://localhost:" + port)
+                .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
+        var response = plain.get().uri("/relay-missing").retrieve().toEntity(new ParameterizedTypeReference<Resp<Void>>() {});
+        assertEquals(502, response.getStatusCode().value());
+        assertEquals("BAD_GATEWAY", response.getBody().getCode());
+    }
+
+    @Autowired
+    RestClient.Builder restClientBuilder;
+
+    @Test
+    void applicationOwnRestClientKeepsSpringErrorBehaviour() {
+        RestClient own = restClientBuilder.baseUrl("http://localhost:" + port).build();
+        assertThrows(org.springframework.web.client.HttpServerErrorException.class,
+                () -> own.get().uri("/boom").retrieve().body(String.class));
+    }
+
+    @Test
     void userHeadersArePropagatedOnlyInsideARequest() {
         UserInfo outside = client.me().unwrap();
         assertNull(outside.userId());

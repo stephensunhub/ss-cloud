@@ -1,14 +1,15 @@
 package men.sbb8.web.starter.client;
 
 import org.springframework.http.HttpRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.client.ClientHttpResponse;
-import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestClient;
 import men.sbb8.web.starter.error.RemoteCallException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -18,6 +19,8 @@ import java.nio.charset.StandardCharsets;
  */
 public class RemoteErrorHandler implements RestClient.ResponseSpec.ErrorHandler {
 
+    private static final int MAX_BODY_BYTES = 64 * 1024;
+
     private final JsonMapper jsonMapper;
 
     public RemoteErrorHandler(JsonMapper jsonMapper) {
@@ -26,7 +29,7 @@ public class RemoteErrorHandler implements RestClient.ResponseSpec.ErrorHandler 
 
     @Override
     public void handle(HttpRequest request, ClientHttpResponse response) throws IOException {
-        String body = StreamUtils.copyToString(response.getBody(), StandardCharsets.UTF_8);
+        String body = readBody(response);
         String code = null;
         String msg = null;
         try {
@@ -40,5 +43,16 @@ public class RemoteErrorHandler implements RestClient.ResponseSpec.ErrorHandler 
         }
         String message = "调用下游失败: " + request.getMethod() + " " + request.getURI() + " -> " + response.getStatusCode();
         throw new RemoteCallException(message, response.getStatusCode(), code, msg, body);
+    }
+
+    /**
+     * 最多读取 {@link #MAX_BODY_BYTES} 字节，按响应声明的字符集解码，缺省 UTF-8；防止异常响应撑爆内存
+     */
+    private static String readBody(ClientHttpResponse response) throws IOException {
+        byte[] bytes = response.getBody().readNBytes(MAX_BODY_BYTES);
+        MediaType contentType = response.getHeaders().getContentType();
+        Charset charset = contentType != null && contentType.getCharset() != null
+                ? contentType.getCharset() : StandardCharsets.UTF_8;
+        return new String(bytes, charset);
     }
 }

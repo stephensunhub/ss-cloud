@@ -22,6 +22,9 @@ interface DemoClient {
     @PostExchange("/valid")
     Resp<String> valid(@RequestBody Map<String, Object> body);
 
+    @GetExchange("/no-such-path")
+    Resp<Void> missing();
+
     @GetExchange("/me")
     Resp<UserInfo> me();
 }

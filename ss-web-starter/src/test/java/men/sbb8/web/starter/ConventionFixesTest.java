@@ -77,6 +77,15 @@ class ConventionFixesTest {
     }
 
     @Test
+    void onlyJsonResponsesAreWrapped() throws Exception {
+        mvc.perform(get("/plain")).andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string("plain"));
+        mvc.perform(get("/json-str")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").value("text"));
+        mvc.perform(get("/str")).andExpect(jsonPath("$.data").value("hello"));
+    }
+
+    @Test
     void rawResponseOnClass() throws Exception {
         mvc.perform(get("/raw-class")).andExpect(status().isOk()).andExpect(jsonPath("$.a").value(1));
     }

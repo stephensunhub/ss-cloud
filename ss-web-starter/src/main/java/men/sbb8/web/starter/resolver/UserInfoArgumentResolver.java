@@ -12,6 +12,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
+import java.time.Instant;
+
 /**
  * 从网关透传的请求头解析 {@link UserInfo}。
  *
@@ -62,7 +64,7 @@ public class UserInfoArgumentResolver implements HandlerMethodArgumentResolver {
                 request.getHeader(HEADER_CLIENT),
                 request.getHeader(HEADER_LANGUAGE),
                 request.getHeader(HEADER_REQUEST_IP),
-                System.currentTimeMillis());
+                Instant.now());
     }
 
     private static @Nullable Integer toInteger(@Nullable String value) {
