@@ -22,9 +22,27 @@ public final class ErrorDetails {
     public static final Metadata.Key<ErrorDetail> ERROR_DETAIL_KEY =
             ProtoUtils.keyForProto(ErrorDetail.getDefaultInstance());
 
+    /**
+     * 参数个数上限，多余的丢弃
+     */
     public static final int MAX_PARAMS = 20;
 
-    public static final int MAX_PARAM_LENGTH = 256;
+    /**
+     * 单个参数值的上限，按 UTF-8 字节计，超出截断并以 … 结尾
+     */
+    public static final int MAX_PARAM_BYTES = 256;
+
+    /**
+     * 全部参数值合计的上限，按 UTF-8 字节计，用完后的参数丢弃。
+     * 错误详情在 trailers 里（二进制 metadata 经 base64，约膨胀三分之一），同样的消息还会进 grpc-message 头
+     * （非 ASCII 字节做百分号编码，膨胀 3 倍），而客户端默认只接受 8KB 的 metadata，所以总量要压得比较小。
+     * 数值由 MetadataSizeLimitTest 在真实网络上按最坏情况（中文、全部参数都出现在消息里）校准
+     */
+    public static final int MAX_TOTAL_PARAM_BYTES = 1024;
+
+    private static final String ELLIPSIS = "…";
+
+    private static final int ELLIPSIS_BYTES = 3;
 
     private static final Pattern PARAM = Pattern.compile("\\{\\{(\\w+)}}");
 
@@ -41,20 +59,62 @@ public final class ErrorDetails {
     }
 
     /**
-     * 错误详情随 trailers 返回，而客户端默认只接受 8KB 的 metadata，超出会让调用方收到 RESOURCE_EXHAUSTED。
-     * 所以参数转成字符串后做限制：最多 {@value #MAX_PARAMS} 个，每个值最多 {@value #MAX_PARAM_LENGTH} 个字符（超出截断，以 … 结尾）。
+     * 限制参数的数量和大小：最多 {@value #MAX_PARAMS} 个；每个值转成字符串后最多 {@value #MAX_PARAM_BYTES} 个 UTF-8 字节，
+     * 全部合计最多 {@value #MAX_TOTAL_PARAM_BYTES} 字节。超出的值按字符（码点）截断，以 … 结尾，不会截断在字符中间；
+     * 总量用完后的参数丢弃。原因见 {@link #MAX_TOTAL_PARAM_BYTES}。
      */
     public static Map<String, String> bound(Map<String, ?> params) {
         Map<String, String> result = new LinkedHashMap<>();
+        int remaining = MAX_TOTAL_PARAM_BYTES;
         for (Map.Entry<String, ?> entry : params.entrySet()) {
-            if (result.size() >= MAX_PARAMS) {
+            if (result.size() >= MAX_PARAMS || remaining < ELLIPSIS_BYTES + 1) {
                 break;
             }
-            String value = String.valueOf(entry.getValue());
-            result.put(entry.getKey(), value.length() <= MAX_PARAM_LENGTH
-                    ? value : value.substring(0, MAX_PARAM_LENGTH - 1) + '…');
+            String value = truncateUtf8(String.valueOf(entry.getValue()), Math.min(MAX_PARAM_BYTES, remaining));
+            result.put(entry.getKey(), value);
+            remaining -= utf8Length(value);
         }
         return result;
+    }
+
+    /**
+     * 截到不超过 maxBytes 个 UTF-8 字节；被截断时以 … 结尾（结果同样不超过 maxBytes）
+     */
+    static String truncateUtf8(String value, int maxBytes) {
+        if (utf8Length(value) <= maxBytes) {
+            return value;
+        }
+        int budget = maxBytes - ELLIPSIS_BYTES;
+        int bytes = 0;
+        int end = 0;
+        while (end < value.length()) {
+            int codePoint = value.codePointAt(end);
+            int length = utf8Length(codePoint);
+            if (bytes + length > budget) {
+                break;
+            }
+            bytes += length;
+            end += Character.charCount(codePoint);
+        }
+        return value.substring(0, end) + ELLIPSIS;
+    }
+
+    private static int utf8Length(String value) {
+        int bytes = 0;
+        for (int i = 0; i < value.length(); i += Character.charCount(value.codePointAt(i))) {
+            bytes += utf8Length(value.codePointAt(i));
+        }
+        return bytes;
+    }
+
+    private static int utf8Length(int codePoint) {
+        if (codePoint < 0x80) {
+            return 1;
+        }
+        if (codePoint < 0x800) {
+            return 2;
+        }
+        return codePoint < 0x10000 ? 3 : 4;
     }
 
     public static StatusException toStatusException(BusinessCode code, Map<String, ?> params) {

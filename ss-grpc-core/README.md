@@ -85,7 +85,7 @@ management:
 ## 错误模型
 
 - 服务端（`ss-grpc-server-starter`）抛 `GrpcBusinessException(业务码, 参数)`，转成该业务码对应的 gRPC 状态，
-  错误详情 `ErrorDetail`（code / msg / params）放在 trailers 里。参数会发给调用方，不要放敏感值；为不超出客户端默认 8KB 的 metadata 上限，参数最多 20 个、每个值最多 256 个字符（超出截断，以 `…` 结尾）
+  错误详情 `ErrorDetail`（code / msg / params）放在 trailers 里。参数会发给调用方，不要放敏感值。为不超出客户端默认的 metadata 上限（超出时调用方收到的是 metadata 过大的错误，而不是真正的业务错误），参数有三重限制，按 **UTF-8 字节**计：最多 20 个、每个值最多 256 字节、全部值合计最多 1024 字节（超出的值按字符截断并以 `…` 结尾，不会截断在字符中间；合计用完后的参数丢弃）。这些数值由 `MetadataSizeLimitTest` 在真实网络上按最坏情况（中文、emoji、100 个超长参数、消息里引用全部参数）校准
 - 未知异常统一为 `INTERNAL` + `SYSTEM_ERROR`，不暴露细节；直接抛出的 `StatusRuntimeException`，
   调用方错误类（参数、不存在、权限等）原样返回，其余丢弃描述换成通用错误
 - 客户端（`ss-grpc-client-starter`）用 `GrpcCalls.call(() -> stub.xxx(req))` 把失败还原为 `GrpcRemoteException`（带业务码）

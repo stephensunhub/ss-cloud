@@ -2,6 +2,7 @@ package men.sbb8.web.starter.config;
 
 import men.sbb8.web.starter.json.JacksonUtils;
 import men.sbb8.web.starter.json.SsJacksonCustomizer;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -24,7 +25,29 @@ public class SsJacksonAutoConfiguration {
     }
 
     @Bean
-    public InitializingBean ssJacksonUtilsInitializer(JsonMapper jsonMapper) {
-        return () -> JacksonUtils.init(jsonMapper);
+    public JacksonUtilsBinding ssJacksonUtilsBinding(JsonMapper jsonMapper) {
+        return new JacksonUtilsBinding(jsonMapper);
+    }
+
+    /**
+     * 容器启动时把容器的 mapper 交给 {@link JacksonUtils}，关闭时还原
+     */
+    public static final class JacksonUtilsBinding implements InitializingBean, DisposableBean {
+
+        private final JsonMapper jsonMapper;
+
+        JacksonUtilsBinding(JsonMapper jsonMapper) {
+            this.jsonMapper = jsonMapper;
+        }
+
+        @Override
+        public void afterPropertiesSet() {
+            JacksonUtils.init(jsonMapper);
+        }
+
+        @Override
+        public void destroy() {
+            JacksonUtils.release(jsonMapper);
+        }
     }
 }

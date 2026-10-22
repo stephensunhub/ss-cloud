@@ -7,6 +7,7 @@ import men.sbb8.web.starter.error.BusinessException;
 import men.sbb8.web.starter.error.CommonCode;
 import men.sbb8.web.starter.error.RemoteCallException;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import men.sbb8.web.starter.config.SsWebProperties;
@@ -19,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.ErrorResponse;
@@ -31,6 +33,7 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import java.net.SocketTimeoutException;
 import java.net.http.HttpTimeoutException;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 全局异常处理，统一输出 {@link Resp}。
@@ -38,6 +41,8 @@ import java.util.Objects;
  * 错误格式由 {@code ss.web.error-format} 决定：默认 {@code resp}，错误与成功共用 {@code Resp} 信封，
  * 客户端只需一种解析方式；{@code problem-detail} 输出 RFC 9457 的 {@code application/problem+json}。
  * 优先级最低：应用自己的 {@code @RestControllerAdvice} 能先于它处理异常，从而覆盖这里的约定。
+ * 应用的 advice 没有显式 {@code @Order} 时，顺序值与这里并列最低，靠 Bean 注册先后区分：Spring Boot 保证自动配置的 Bean
+ * 在应用自己的 Bean 之后注册，所以应用的先生效（有测试覆盖）。应用显式设置了 {@code @Order} 的，数值越小越先生效。
  *
  * @author Stephen
  */
@@ -107,11 +112,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * @RequestBody / @ModelAttribute 校验与绑定失败
+     * @RequestBody / @ModelAttribute 校验与绑定失败。
+     * WARN 日志只写字段名和校验消息，不写被拒绝的值：那是用户的原始输入，可能包含密码、证件号等；完整信息在 DEBUG 日志里
      */
     @ExceptionHandler(BindException.class)
     public ResponseEntity<?> handleBind(BindException e) {
-        log.warn("参数绑定/校验异常: {}", e.getMessage());
+        log.warn("参数绑定/校验异常: {}", describe(e.getBindingResult()));
+        log.debug("参数绑定/校验异常的完整信息", e);
         ObjectError error = e.getBindingResult().getAllErrors().stream().findFirst().orElse(null);
         if (error instanceof FieldError fieldError) {
             if ("typeMismatch".equalsIgnoreCase(fieldError.getCode())) {
@@ -120,6 +127,13 @@ public class GlobalExceptionHandler {
             return badRequest(CommonCode.PARAMS_ERROR, fieldError.getDefaultMessage());
         }
         return badRequest(CommonCode.PARAMS_ERROR, error == null ? null : error.getDefaultMessage());
+    }
+
+    private static String describe(BindingResult result) {
+        return result.getAllErrors().stream()
+                .map(error -> (error instanceof FieldError field ? field.getField() : error.getObjectName())
+                        + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining("; "));
     }
 
     /**
@@ -154,7 +168,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(TypeMismatchException.class)
     public ResponseEntity<?> handleTypeMismatch(TypeMismatchException e) {
-        log.warn("参数类型转换异常: {}", e.getMessage());
+        // 异常消息里带有用户传入的原始值，WARN 日志里不写，完整信息在 DEBUG 日志里
+        log.warn("参数类型转换异常: 参数 {} 需要 {}", e.getPropertyName(),
+                e.getRequiredType() == null ? "?" : e.getRequiredType().getSimpleName());
+        log.debug("参数类型转换异常的完整信息", e);
         Class<?> required = e.getRequiredType();
         String msg = "参数(" + e.getPropertyName() + ")类型错误" + (required == null ? "" : ",必须(" + required.getSimpleName() + ")");
         return badRequest(CommonCode.PARAMS_TRANSFER_ERROR, msg);
@@ -162,7 +179,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<?> handleNotReadable(HttpMessageNotReadableException e) {
-        log.warn("请求体无法解析: {}", e.getMessage());
+        // 异常消息可能带有请求体里的片段，WARN 日志里只写原因的类型，完整信息在 DEBUG 日志里
+        log.warn("请求体无法解析: {}", NestedExceptionUtils.getMostSpecificCause(e).getClass().getSimpleName());
+        log.debug("请求体无法解析的完整信息", e);
         return badRequest(CommonCode.PARAMS_ERROR, "请求体格式错误");
     }
 

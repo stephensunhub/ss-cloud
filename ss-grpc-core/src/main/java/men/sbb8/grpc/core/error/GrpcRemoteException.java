@@ -7,7 +7,7 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * 调用下游 gRPC 服务失败。下游返回了 {@code ErrorDetail} 时带有业务码和消息，否则只有 gRPC 状态。
- * 通过 {@link men.sbb8.grpc.client.GrpcCalls} 调用 stub 时，{@link StatusRuntimeException} 会被转成它。
+ * 通过客户端 starter（ss-grpc-client-starter）的 {@code GrpcCalls} 调用 stub 时，{@link StatusRuntimeException} 会被转成它。
  *
  * @author Stephen
  */

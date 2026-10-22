@@ -56,6 +56,9 @@ class JacksonUtilsTest {
     void nullAndBlankReturnNull() {
         assertNull(JacksonUtils.fromJson((String) null, Item.class));
         assertNull(JacksonUtils.fromJson("  ", Item.class));
+        assertNull(JacksonUtils.fromJson((byte[]) null, Item.class));
+        assertNull(JacksonUtils.fromJson(new byte[0], Item.class));
+        assertNull(JacksonUtils.fromJson((java.io.InputStream) null, Item.class));
         assertNull(JacksonUtils.fromJsonList("", Item.class));
         assertNull(JacksonUtils.readTree(null));
         assertNull(JacksonUtils.convert(null, Item.class));

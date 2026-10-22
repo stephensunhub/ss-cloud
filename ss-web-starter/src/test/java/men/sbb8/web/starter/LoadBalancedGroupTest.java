@@ -2,17 +2,7 @@ package men.sbb8.web.starter;
 
 import men.sbb8.web.starter.dto.resp.Resp;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.cloud.client.DefaultServiceInstance;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
-import org.springframework.cloud.client.loadbalancer.LoadBalancerRequest;
-import org.springframework.cloud.client.loadbalancer.LoadBalancerUriTools;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -22,31 +12,28 @@ import org.springframework.web.client.RestClient;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.ServerSocket;
-import java.net.URI;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * ss.web.client.load-balanced-groups：base-url 里写服务名（http://wallet），请求经 Spring Cloud 的负载均衡解析到实例。
- * 这里用一个固定把 wallet 指向本机测试服务的 LoadBalancerClient 代替真实的服务发现。
+ * 按服务名调用用 Spring Cloud 官方的写法：{@code base-url: lb://wallet}。
+ * 这里用<b>真实的</b> Spring Cloud LoadBalancer，实例来自静态实例列表（wallet 指向本机测试服务，ghost 没有任何实例），
+ * 验证三件事：服务名被正确解析；没有可用实例时是 502 而不是 500（这要求本 starter 的拦截器排在负载均衡拦截器之外）；
+ * 普通地址的分组不受负载均衡影响。
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, properties = {
-        "ss.web.client.load-balanced-groups=lb"
-})
-@Import(LoadBalancedGroupTest.StubLoadBalancer.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 class LoadBalancedGroupTest {
 
     private static final int PORT = freePort();
-    static final AtomicInteger RESOLVED = new AtomicInteger();
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("server.port", () -> PORT);
         registry.add("management.server.port", () -> PORT);
         registry.add("spring.http.serviceclient.demo.base-url", () -> "http://localhost:" + PORT);
+        registry.add("spring.cloud.discovery.client.simple.instances.wallet[0].uri", () -> "http://localhost:" + PORT);
     }
 
     private static int freePort() {
@@ -57,68 +44,41 @@ class LoadBalancedGroupTest {
         }
     }
 
-    @TestConfiguration
-    static class StubLoadBalancer {
-        @Bean
-        LoadBalancerClient loadBalancerClient() {
-            return new LoadBalancerClient() {
-                private ServiceInstance instance(String serviceId) {
-                    RESOLVED.incrementAndGet();
-                    return new DefaultServiceInstance(serviceId + "-1", serviceId, "localhost", PORT, false);
-                }
-
-                @Override
-                public ServiceInstance choose(String serviceId) {
-                    return instance(serviceId);
-                }
-
-                @Override
-                public <T> ServiceInstance choose(String serviceId, org.springframework.cloud.client.loadbalancer.Request<T> request) {
-                    return instance(serviceId);
-                }
-
-                @Override
-                public <T> T execute(String serviceId, LoadBalancerRequest<T> request) throws IOException {
-                    return execute(serviceId, instance(serviceId), request);
-                }
-
-                @Override
-                public <T> T execute(String serviceId, ServiceInstance serviceInstance, LoadBalancerRequest<T> request) throws IOException {
-                    try {
-                        return request.apply(serviceInstance);
-                    } catch (IOException | RuntimeException e) {
-                        throw e;
-                    } catch (Exception e) {
-                        throw new IOException(e);
-                    }
-                }
-
-                @Override
-                public URI reconstructURI(ServiceInstance instance, URI original) {
-                    return LoadBalancerUriTools.reconstructURI(instance, original);
-                }
-            };
-        }
+    /**
+     * 不对错误状态抛异常，便于断言 502 的响应体
+     */
+    private static RestClient client() {
+        return RestClient.builder().baseUrl("http://localhost:" + PORT)
+                .defaultStatusHandler(HttpStatusCode::isError, (request, response) -> { }).build();
     }
 
     @Test
-    void groupWithServiceNameAsHostIsResolvedThroughTheLoadBalancer() {
-        int before = RESOLVED.get();
+    void serviceNameInLbSchemeIsResolvedByTheRealLoadBalancer() {
         Resp<Map<String, Object>> resp = RestClient.create("http://localhost:" + PORT).get().uri("/relay-lb")
                 .retrieve().body(new ParameterizedTypeReference<Resp<Map<String, Object>>>() {});
         assertEquals("SUCCESS", resp.getCode());
         assertEquals(1, resp.getData().get("n"));
-        assertTrue(RESOLVED.get() > before, "请求应经过负载均衡解析服务名 wallet");
     }
 
     @Test
-    void groupsNotListedAreLeftAlone() {
-        // down 分组没有列入 load-balanced-groups，base-url 是普通地址，不经负载均衡，照常报"连不上"
-        RestClient plain = RestClient.builder().baseUrl("http://localhost:" + PORT)
-                .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
-        int before = RESOLVED.get();
-        var response = plain.get().uri("/relay-down").retrieve().toBodilessEntity();
+    void noAvailableInstanceIs502NotInternalError() {
+        var response = client().get().uri("/relay-ghost").retrieve().toEntity(String.class);
         assertEquals(502, response.getStatusCode().value());
-        assertEquals(before, RESOLVED.get(), "没有列入的分组不应经过负载均衡");
+        assertTrue(response.getBody().contains("\"code\":\"BAD_GATEWAY\""), response.getBody());
+        assertTrue(response.getBody().contains("下游服务异常"), response.getBody());
+    }
+
+    @Test
+    void groupsWithPlainAddressesAreLeftAlone() {
+        // demo 分组的 base-url 是普通地址（http://localhost:端口），负载均衡存在时也不应拿 localhost 当服务名去找实例
+        var response = client().get().uri("/relay").retrieve().toEntity(String.class);
+        assertEquals(200, response.getStatusCode().value(), response.getBody());
+        assertTrue(response.getBody().contains("\"code\":\"SUCCESS\""), response.getBody());
+    }
+
+    @Test
+    void unreachablePlainAddressIsStill502() {
+        var response = client().get().uri("/relay-down").retrieve().toEntity(String.class);
+        assertEquals(502, response.getStatusCode().value());
     }
 }

@@ -53,6 +53,11 @@ class TestApp {
         Resp<Map<String, Object>> obj();
     }
 
+    interface GhostClient {
+        @org.springframework.web.service.annotation.GetExchange("/obj")
+        Resp<Map<String, Object>> obj();
+    }
+
     @org.springframework.context.annotation.Configuration
     @ImportHttpServices(group = "down", types = DownClient.class)
     static class DownConfig {
@@ -61,6 +66,11 @@ class TestApp {
     @org.springframework.context.annotation.Configuration
     @ImportHttpServices(group = "lb", types = LbClient.class)
     static class LbConfig {
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ImportHttpServices(group = "ghost", types = GhostClient.class)
+    static class GhostConfig {
     }
 
     @RestController
@@ -168,16 +178,25 @@ class TestApp {
         @Autowired
         LbClient lbClient;
 
+        @Autowired
+        GhostClient ghostClient;
+
         /** 下游根本连不上（连接被拒）经全局异常处理后对外应是 502 */
         @GetMapping("/relay-down")
         Resp<Map<String, Object>> relayDown() {
             return downClient.get();
         }
 
-        /** 按服务名（http://wallet）经负载均衡调用 */
+        /** 按服务名（lb://wallet）经负载均衡调用 */
         @GetMapping("/relay-lb")
         Resp<Map<String, Object>> relayLb() {
             return Resp.ok(lbClient.obj().unwrap());
+        }
+
+        /** 按服务名调用一个没有任何实例的服务（lb://ghost）：对外应是 502，而不是 500 */
+        @GetMapping("/relay-ghost")
+        Resp<Map<String, Object>> relayGhost() {
+            return ghostClient.obj();
         }
 
         /** 下游 5xx 经全局异常处理后对外应是 502 */

@@ -38,14 +38,6 @@ class SsWebStarterTest {
         mvc.perform(get("/obj")).andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
-    @Autowired
-    tools.jackson.databind.json.JsonMapper jsonMapper;
-
-    @Test
-    void jacksonUtilsUsesContainerMapper() {
-        org.junit.jupiter.api.Assertions.assertSame(jsonMapper, men.sbb8.web.starter.json.JacksonUtils.mapper());
-    }
-
     @Test
     void timeFormatConvention() throws Exception {
         // 请求体：LocalDateTime 兼容空格写法，Instant 为 ISO 带 Z

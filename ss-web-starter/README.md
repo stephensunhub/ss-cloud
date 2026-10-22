@@ -95,18 +95,19 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
 - 非 2xx 响应统一转成 `RemoteCallException`（带 `status`、下游的 `code` / `remoteMsg`、原始响应体，最多读 64KB）；
   返回 `Resp<T>` 的方法用 `resp.unwrap()` 取数据，失败时抛 `BusinessException`
 - 默认超时：连接 3 秒、读取 30 秒，用 `spring.http.clients.connect-timeout` / `read-timeout` 调整
-- **按服务名调用**（服务发现，如 Consul）：引入 `spring-cloud-starter-loadbalancer` 和服务发现后，把分组列入
-  `ss.web.client.load-balanced-groups`，`base-url` 里写服务名即可，应用里不用自己写负载均衡配置：
+- **按服务名调用**（服务发现，如 Consul）用 Spring Cloud 官方的写法：引入 `spring-cloud-starter-loadbalancer` 和服务发现后，
+  `base-url` 写成 `lb://服务名`，本 starter 不需要任何额外配置：
 
   ```yaml
-  spring.http.serviceclient.wallet.base-url: http://wallet     # 服务名
-  ss.web.client.load-balanced-groups: wallet
+  spring.http.serviceclient.wallet.base-url: lb://wallet     # 服务名，经 Spring Cloud LoadBalancer 在实例间轮询
   ```
 
-  没有可用实例时同样返回 502。配置了这一项却没引入 Spring Cloud 时，启动就会失败并说明原因。
-  **只支持 JVM 模式**：Spring Cloud LoadBalancer 在 GraalVM 原生镜像里不可用（见下文"原生镜像"）。
-  已在 Boot 4.1.1 + Spring Cloud 2025.1.3（spring-cloud-consul 5.0.3）+ 真实 Consul 上实测；
-  注意官方 2025.1 列车对应的是 Boot 4.0.x，目前没有正式对应 Boot 4.1 的列车
+  本 starter 在此之上只做一件事：没有可用实例时（Spring Cloud 抛的是普通的 `IllegalStateException`）统一返回 502，
+  和"下游连不上"一致，而不是被当成未知异常变成 500。只有 `lb://` 开头的地址才走负载均衡，
+  `http://wallet` 这样的写法**不会**被当成服务名；普通地址的分组不受影响。
+  已用真实的 Spring Cloud LoadBalancer 加静态实例列表测试（两个实例轮询、没有实例返回 502、普通地址不受影响）；
+  Consul 的 `DiscoveryClient` 在 Boot 4.1.1 + Spring Cloud 2025.1.3（spring-cloud-consul 5.0.3）的 JVM 模式下另有实测。
+  注意官方 2025.1 列车对应的是 Boot 4.0.x，目前没有正式对应 Boot 4.1 的列车。原生镜像下的要求见"原生镜像"一节
 - 这些处理只作用于 `@HttpExchange` 客户端，不影响应用自己创建的 `RestClient`
 - 用户头只在请求线程内才能透传；链路追踪的上下文会自动延续到下游
 
@@ -141,7 +142,6 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
 | `ss.web.error-format` | `resp` | 错误响应格式：`resp` 或 `problem-detail` |
 | `ss.web.user-info.required` | `false` | 缺少 `X-User-Id` 时是否返回 401 |
 | `ss.web.client.propagate-user-headers` | 空 | 需要透传用户头的客户端分组名 |
-| `ss.web.client.load-balanced-groups` | 空 | 按服务名调用（经 Spring Cloud 负载均衡）的客户端分组名，见上文 |
 | `ss.web.open-api.title` | `spring.application.name` | 接口文档标题 |
 | `ss.web.open-api.description` | `<标题> 接口文档` | 接口文档描述 |
 | `ss.web.open-api.version` | `v1` | 接口文档版本 |
@@ -221,13 +221,18 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
   `@ConditionalOnProperty` 开关、以及 gRPC 的 `ss.grpc.metrics.prometheus.enabled`，运行期设置在原生镜像里都不生效
   （JVM 模式下是生效的）
 
+### Spring Cloud 与原生镜像
+
+- **LoadBalancer（`lb://服务名`）在原生镜像里可用，但必须在编译期声明用到的服务名**（官方文档的要求）：
+  `spring.cloud.loadbalancer.eager-load.clients=wallet,order`，或 `@LoadBalancerClient(name = "wallet")`。
+  已实测（静态实例列表，两个实例）：声明后的轮询结果与 JVM 完全一致；不声明则每次调用都失败
+  （`GenericApplicationContext must be an instance of …`，对外变成 500）。这个值在编译期固定，运行期再改无效。
+- **Consul 相关的问题另算**（已实测，原生镜像下基本不可用，JVM 模式正常）：`@RefreshScope` 让 AOT 编译直接失败；
+  读取 Consul KV 配置因 `GetValue` 缺反射提示而加载失败；服务注册请求发出后 Consul 里没有该服务（原因未查明）。
+  Consul 的 `DiscoveryClient` 在原生镜像下没有单独验证过。
+  要同时使用 GraalVM 和 Consul，需要自己补反射提示或等上游支持。
+
 ## 生产环境默认值
 
 激活 `prod` / `production` 时：关闭 Swagger UI 和 `/v3/api-docs`、actuator 监控端点改用独立端口 `9091`（指标 `:9091/metrics`，健康 `:9091/health/liveness`、`/health/readiness`）、
 链路追踪采样率 `0.1`、控制台日志使用 ECS 结构化 JSON。均可在应用配置里覆盖。
-
-### Consul / Spring Cloud 与原生镜像
-
-已实测，**原生镜像下基本不可用**（JVM 模式正常）：`@RefreshScope` 让 AOT 编译直接失败；读取 Consul KV 配置因 `GetValue` 缺反射提示而加载失败；
-LoadBalancer 创建子上下文失败，按服务名的调用变成 500；服务注册请求发出后 Consul 里没有该服务（原因未查明）。
-要同时使用 GraalVM 和 Consul，需要自己补反射提示或等上游支持。

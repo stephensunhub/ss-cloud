@@ -79,13 +79,6 @@ public class SsWebProperties {
          */
         private List<String> propagateUserHeaders = List.of();
 
-        /**
-         * 按服务名调用的客户端分组：这些分组的 base-url 里写服务名（如 {@code http://wallet}），请求经 Spring Cloud LoadBalancer
-         * 解析到具体实例。需要引入 spring-cloud-starter-loadbalancer 和服务发现（如 Consul）。
-         * 只支持 JVM 模式：LoadBalancer 在 GraalVM 原生镜像里不可用
-         */
-        private List<String> loadBalancedGroups = List.of();
-
     }
 
     public enum ErrorFormat {

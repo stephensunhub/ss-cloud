@@ -30,22 +30,20 @@ public class BusinessExceptionHandler implements GrpcExceptionHandler {
     public @Nullable StatusException handleException(Throwable exception) {
         GrpcBusinessException business = CauseChain.find(exception, GrpcBusinessException.class);
         if (business != null) {
-            GrpcBusinessException e = business;
-            log.warn("业务异常: code={}, msg={}", e.getCode().code(), e.getMessage());
-            return ErrorDetails.toStatusException(e.getCode(), e.getParams());
+            log.warn("业务异常: code={}, msg={}", business.getCode().code(), business.getMessage());
+            return ErrorDetails.toStatusException(business.getCode(), business.getParams());
         }
         GrpcRemoteException remote = CauseChain.find(exception, GrpcRemoteException.class);
         if (remote != null) {
-            GrpcRemoteException e = remote;
-            ErrorDetail detail = e.getDetail();
-            if (detail != null && CallerStatuses.isCallerError(e.getStatus().getCode())) {
-                log.warn("下游业务错误: status={}, code={}, msg={}", e.getStatus().getCode(), detail.getCode(), detail.getMsg());
-                return e.getStatus().withDescription(detail.getMsg()).asException(ErrorDetails.trailers(detail));
+            ErrorDetail detail = remote.getDetail();
+            if (detail != null && CallerStatuses.isCallerError(remote.getStatus().getCode())) {
+                log.warn("下游业务错误: status={}, code={}, msg={}", remote.getStatus().getCode(), detail.getCode(), detail.getMsg());
+                return remote.getStatus().withDescription(detail.getMsg()).asException(ErrorDetails.trailers(detail));
             }
-            if (CallerStatuses.isTransient(e.getStatus().getCode())) {
-                log.warn("下游暂时不可用: {}", e.getMessage());
+            if (CallerStatuses.isTransient(remote.getStatus().getCode())) {
+                log.warn("下游暂时不可用: {}", remote.getMessage());
             } else {
-                log.error("下游调用失败: {}", e.getMessage(), e);
+                log.error("下游调用失败: {}", remote.getMessage(), remote);
             }
             return ErrorDetails.toStatusException(CommonCode.DOWNSTREAM_ERROR, Map.of());
         }

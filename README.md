@@ -61,20 +61,28 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 
 ## 构建
 
-需要 JDK 25 和 Maven 3.9（已用 3.9.15 验证）：
+需要 JDK 25。仓库自带 Maven Wrapper（固定 Maven 3.9.15，已验证），不需要本机预装 Maven：
 
 ```bash
-mvn clean verify
+./mvnw clean verify
 ```
 
 首次构建需要联网：gRPC 模块用 `protobuf-maven-plugin` 从 Maven 仓库下载 `protoc`，不要求本机安装。
 原生镜像需要 GraalVM 25（Oracle GraalVM 25.0.4 已验证）。
 
+升版本号时用 Maven 的 versions 插件一次改全部模块，不要手工逐个 pom 改：
+
+```bash
+./mvnw versions:set -DnewVersion=2026.11.1.0 -DgenerateBackupPoms=false
+```
+
 ## 已定的设计决策
 
-- 不使用 Spring Cloud Alibaba；暂不引入服务发现和配置中心。项目依赖 Consul，用到 Spring Cloud Consul 时要注意：
-  Spring Cloud BOM 已在父 POM 里导入但**目前没有任何模块使用**，而官方的 2025.1 列车对应 Boot 4.0.x，
-  暂无正式对应 Boot 4.1 的列车（下一条 2026.0 对应 Boot 4.2），引入前需先实测兼容性，或让 Boot 与列车对齐
+- 不使用 Spring Cloud Alibaba；暂不引入配置中心。服务发现：gRPC 在 k8s 里先用 headless Service（`dns:///`），
+  等 Spring gRPC / Spring Cloud 出官方方案，不自己造服务发现的轮子；HTTP 按服务名调用用 Spring Cloud 官方的 `lb://服务名`
+- 项目依赖 Consul，用到 Spring Cloud 组件时要注意：Spring Cloud BOM 已在父 POM 里导入，但官方的 2025.1 列车对应 Boot 4.0.x，
+  暂无正式对应 Boot 4.1 的列车（下一条 2026.0 对应 Boot 4.2）。已实测 Spring Cloud LoadBalancer 和 Spring Cloud Consul 5.0.3
+  在 Boot 4.1.1 的 JVM 模式下可用；其他组件引入前需先实测兼容性，或让 Boot 与列车对齐
 - HTTP 客户端用 `@HttpExchange` + `RestClient`，不用 Feign、不用手写 HTTP 客户端
 - Web 相关的封装（Jackson、Redis 序列化、JSON 持久化转换等）都在 `ss-web-starter`，gRPC 走 protobuf，不带 Jackson
 - 原有的 hkx-cloud4 项目只作参考，不在本仓库里修改

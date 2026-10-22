@@ -56,21 +56,75 @@ class ErrorDetailsTest {
         assertTrue(plain.getMessage().contains("UNAVAILABLE"));
     }
 
-    @Test
-    void oversizedParamsAreBounded() {
-        String huge = "x".repeat(10_000);
-        ErrorDetail detail = ErrorDetails.toDetail(CommonCode.PARAMS_ERROR, Map.of("field", huge));
-        String value = detail.getParamsMap().get("field");
-        assertEquals(ErrorDetails.MAX_PARAM_LENGTH, value.length());
-        assertTrue(value.endsWith("…"));
+    private static int bytes(String value) {
+        return value.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+    }
 
+    private static String param(String value) {
+        return ErrorDetails.toDetail(CommonCode.PARAMS_ERROR, Map.of("field", value)).getParamsMap().get("field");
+    }
+
+    @Test
+    void asciiParamIsTruncatedToTheByteLimit() {
+        String value = param("x".repeat(10_000));
+        assertEquals(ErrorDetails.MAX_PARAM_BYTES, bytes(value));
+        assertTrue(value.endsWith("…"));
+    }
+
+    @Test
+    void chineseParamIsBoundedByBytesNotCharacters() {
+        // 每个汉字 3 个字节：按字符数算会放进 3 倍的字节
+        String value = param("汉".repeat(1_000));
+        assertTrue(bytes(value) <= ErrorDetails.MAX_PARAM_BYTES, "实际 " + bytes(value) + " 字节");
+        assertTrue(value.endsWith("…"));
+        assertTrue(value.chars().noneMatch(c -> c == '\uFFFD'));
+    }
+
+    /**
+     * 编码成 UTF-8 再解码能还原：说明没有残缺的代理对（残缺的会被编码成 ?）
+     */
+    private static boolean isWellFormed(String value) {
+        return new String(value.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                java.nio.charset.StandardCharsets.UTF_8).equals(value);
+    }
+
+    @Test
+    void truncationNeverSplitsASurrogatePair() {
+        // emoji 占 2 个 char、4 个字节；前面垫 0~3 个 ASCII 字符，让截断点落在 emoji 内部的各种位置
+        for (int padding = 0; padding < 4; padding++) {
+            String value = param("a".repeat(padding) + "😀".repeat(200));
+            assertTrue(isWellFormed(value), "垫 " + padding + " 个字符");
+            assertTrue(bytes(value) <= ErrorDetails.MAX_PARAM_BYTES);
+            assertTrue(value.endsWith("…"));
+        }
+    }
+
+    @Test
+    void shortParamIsKeptAsIs() {
+        assertEquals("abc", param("abc"));
+        assertEquals("汉字", param("汉字"));
+    }
+
+    @Test
+    void paramCountIsBounded() {
         Map<String, Object> many = new java.util.LinkedHashMap<>();
         for (int i = 0; i < 100; i++) {
             many.put("k" + i, i);
         }
         assertEquals(ErrorDetails.MAX_PARAMS, ErrorDetails.toDetail(CommonCode.PARAMS_ERROR, many).getParamsCount());
-        // 整个详情放进 trailers 后远小于客户端默认的 8KB metadata 上限
-        assertTrue(ErrorDetails.toDetail(CommonCode.PARAMS_ERROR, many).getSerializedSize() < 8192);
+    }
+
+    @Test
+    void totalParamSizeIsBounded() {
+        Map<String, Object> big = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < 20; i++) {
+            big.put("k" + i, "y".repeat(1_000));
+        }
+        Map<String, String> bounded = ErrorDetails.bound(big);
+        int total = bounded.values().stream().mapToInt(ErrorDetailsTest::bytes).sum();
+        assertTrue(total <= ErrorDetails.MAX_TOTAL_PARAM_BYTES, "合计 " + total + " 字节");
+        assertTrue(bounded.size() < ErrorDetails.MAX_PARAMS, "总量用完后的参数应被丢弃");
+        assertTrue(bounded.size() >= 1);
     }
 
     @Test
@@ -81,7 +135,7 @@ class ErrorDetailsTest {
             public String msg() { return "bad {{v}}"; }
         };
         String message = new GrpcBusinessException(template, Map.of("v", "y".repeat(5000))).getMessage();
-        assertEquals("bad ".length() + ErrorDetails.MAX_PARAM_LENGTH, message.length());
+        assertEquals("bad " + "y".repeat(ErrorDetails.MAX_PARAM_BYTES - 3) + "…", message);
     }
 
     @Test

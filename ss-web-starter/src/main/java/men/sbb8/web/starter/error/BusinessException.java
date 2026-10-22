@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatusCode;
 /**
  * 业务异常，由 {@code GlobalExceptionHandler} 转成 {@code Resp}。
  * HTTP 状态码默认 200，业务失败通过 code 表达；需要时显式指定。
+ * 业务码优先用 {@link BusinessCode}（枚举）；没有对应枚举时用 {@code (String code, String message)}。
+ * 没有"只传消息"的构造：不带业务码的失败是系统异常（500），用无参构造或包装原因的构造。
  *
  * @author Stephen
  */
@@ -43,10 +45,6 @@ public class BusinessException extends RuntimeException {
         this.httpStatus = HttpStatus.OK;
         this.code = code;
         this.msg = message;
-    }
-
-    public BusinessException(String msg) {
-        this(CommonCode.SYSTEM_ERROR.name(), msg);
     }
 
     public BusinessException(BusinessCode code) {

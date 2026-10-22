@@ -14,8 +14,7 @@ import lombok.Setter;
  */
 @Setter
 @Getter
-public class PageReq implements BaseReq {
-
+public class PageReq {
 
     public static final int MAX_SIZE = 200;
 

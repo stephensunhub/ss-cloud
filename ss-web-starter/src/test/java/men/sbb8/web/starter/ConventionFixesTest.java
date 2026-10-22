@@ -84,6 +84,12 @@ class ConventionFixesTest {
     }
 
     @Test
+    void explicitPatternIsNotRelaxedByTheLenientFallback() {
+        // 字段明确声明了格式，宽容的空格写法不再放行
+        assertThrows(JacksonException.class, () -> JacksonUtils.fromJson("{\"at\":\"2026-01-02 03:04:05\"}", Stamped.class));
+    }
+
+    @Test
     void spaceSeparatedStillAcceptedWithoutPattern() {
         assertEquals(LocalDateTime.of(2026, 1, 2, 3, 4, 5),
                 JacksonUtils.fromJson("{\"at\":\"2026-01-02 03:04:05\"}", Plain.class).at());

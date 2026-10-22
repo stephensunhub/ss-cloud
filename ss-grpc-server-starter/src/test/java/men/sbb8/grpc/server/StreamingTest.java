@@ -4,7 +4,9 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import men.sbb8.grpc.client.GrpcCalls;
 import men.sbb8.grpc.core.error.ErrorDetails;
+import men.sbb8.grpc.core.error.GrpcRemoteException;
 import men.sbb8.grpc.server.test.GreeterGrpc;
 import men.sbb8.grpc.server.test.HelloReply;
 import men.sbb8.grpc.server.test.HelloRequest;
@@ -57,6 +59,25 @@ class StreamingTest {
         assertEquals(Status.Code.ALREADY_EXISTS, e.getStatus().getCode());
         assertEquals("名称 streamed 已被占用", ErrorDetails.find(e).orElseThrow().getMsg());
         assertEquals(before + 1, serverStreamCalls("ALREADY_EXISTS"));
+    }
+
+    @Test
+    void grpcCallsStreamTurnsMidStreamFailureIntoRemoteException() {
+        Iterator<HelloReply> replies = GrpcCalls.stream(
+                () -> stub.stream(HelloRequest.newBuilder().setName("stream-business").build()));
+        assertEquals("part-1", replies.next().getMessage());
+        assertEquals("part-2", replies.next().getMessage());
+        GrpcRemoteException e = assertThrows(GrpcRemoteException.class, replies::hasNext);
+        assertEquals("NAME_TAKEN", e.getCode());
+        assertEquals(Status.Code.ALREADY_EXISTS, e.getStatus().getCode());
+    }
+
+    @Test
+    void grpcCallsStreamPassesNormalStreamsThrough() {
+        List<String> received = new ArrayList<>();
+        GrpcCalls.stream(() -> stub.stream(HelloRequest.newBuilder().setName("ok").build()))
+                .forEachRemaining(r -> received.add(r.getMessage()));
+        assertEquals(List.of("part-1", "part-2"), received);
     }
 
     @Test

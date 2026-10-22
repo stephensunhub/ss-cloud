@@ -59,10 +59,6 @@ public class Resp<T> {
         return new Resp<>(null, code, msg);
     }
 
-    public static <T> Resp<T> fail(T t, String rawCode, String msg) {
-        return new Resp<>(t, rawCode, msg);
-    }
-
     @JsonIgnore
     public boolean isSuccess() {
         return CommonCode.SUCCESS.name().equalsIgnoreCase(this.code);
