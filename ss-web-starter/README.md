@@ -41,12 +41,34 @@ management:
 验证覆盖：统一响应、异常处理、参数校验、`UserInfo`、`@HttpExchange` 客户端、`JacksonUtils`、Redis 序列化、
 OpenAPI、Prometheus 指标、链路追踪，结果与 JVM 模式一致。示例应用编译约 1 分 10 秒，启动 0.09 秒（JVM 模式约 1.7 秒）。
 
+另已在 prod 配置的原生镜像上验证：独立管理端口 `:9091/metrics`、`/health/liveness|readiness`、接口文档关闭、
+OTLP 导出（含服务名和请求路径）、真实 Redis 读写与 `@Cacheable`（值为带 `@class` 的 JSON）、Swagger UI（非 prod）。
+
 starter 自己需要的提示（默认配置文件、`aot.factories`）已内置。**应用代码**需要注意，这是 GraalVM 的限制，JVM 模式不需要：
 
 - 只通过 `JacksonUtils.fromJson(json, Xxx.class)` 反序列化、没有控制器引用的类型，要自己注册反射提示，
   如 `@RegisterReflectionForBinding(Xxx.class)`；漏注册时启动正常，调用时报 "Record components not available for record class"
 - 放进 Redis 的类型同样需要反射提示，并且仍受类型白名单限制（`men.sbb8.*`）
 - 原生模式下 `AOT` 在编译期固定了 Bean 和条件，不要依赖运行期改变 `@Conditional` 的属性
+
+### 编译原生镜像的要求（已实测）
+
+Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnProperty` 等属性条件决定是否创建的 Bean，
+运行期再改属性**不会**增删它。只改值的属性（端口、URL、采样率等）不受影响。
+
+- **编译时就要激活目标环境的 profile**，否则 prod 的默认值不会进入镜像（接口文档仍然暴露、独立管理端口不存在）：
+  ```bash
+  SPRING_PROFILES_ACTIVE=prod mvn -Pnative -DskipTests native:compile
+  # 或 -Dspring-boot.aot.jvmArguments=-Dspring.profiles.active=prod
+  ```
+  注意：`-Dspring-boot.run.profiles`、`-Dspring-boot.aot.profiles`、`-Dspring.profiles.active` 直接写在 mvn 命令行上**都不会**传给 AOT 进程（已实测）。
+  也就是说镜像是按环境编译的，prod 镜像用 prod 编译。
+- **OTLP 导出器需要编译期就存在导出地址**，否则导出器不会被包含，运行期配了地址也不会导出（且没有任何报错）。
+  做法：编译期放一个占位地址（如 `application-prod.properties` 里的
+  `management.opentelemetry.tracing.export.otlp.endpoint=http://localhost:4318/v1/traces`），运行期再用环境变量或参数覆盖成真实地址。
+- 同理，各类 `*.enabled` 开关要在编译期确定。已实测的例子：`springdoc.*.enabled`、独立管理端口，
+  以及示例里自己写的 `@ConditionalOnProperty` 开关，运行期设置都不生效。`ss.web.response-wrap.enabled`
+  同样是 `@ConditionalOnProperty`，按同一原理应当如此（未单独实测）。
 
 ## 生产环境默认值
 

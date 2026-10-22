@@ -11,8 +11,31 @@ Prometheus 抓取端口、链路追踪与监控指标的默认配置。
 已用 GraalVM 25（Oracle GraalVM 25.0.4）实际编译并运行验证（服务端 + 客户端，含 protobuf `ErrorDetail`、
 异常转换、健康检查、Prometheus 指标），结果与 JVM 模式一致。示例应用编译约 46 秒，启动 0.03 秒（JVM 模式约 0.8 秒）。
 
+另已验证：只引入 `ss-grpc-client-starter` 的原生镜像（启动 0.014 秒）调用原生服务端，链路传递和 OTLP 导出正常
+（同一个 traceId 同时出现在客户端和服务端导出的数据里）。
+
 starter 已内置所需提示：默认配置文件，以及 grpc-java 通过反射使用的 `LongAdder`（Boot / Spring gRPC 没有注册它，
 缺了会在 gRPC 服务端 / 客户端启动时失败）。应用自己的 protobuf 消息和 gRPC 服务由 Spring gRPC 的 AOT 处理注册。
+
+
+### 编译原生镜像的要求（已实测）
+
+Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnProperty` 等属性条件决定是否创建的 Bean，
+运行期再改属性**不会**增删它。只改值的属性（端口、URL、采样率等）不受影响。
+
+- **编译时就要激活目标环境的 profile**，否则 prod 的默认值不会进入镜像（接口文档仍然暴露、独立管理端口不存在）：
+  ```bash
+  SPRING_PROFILES_ACTIVE=prod mvn -Pnative -DskipTests native:compile
+  # 或 -Dspring-boot.aot.jvmArguments=-Dspring.profiles.active=prod
+  ```
+  注意：`-Dspring-boot.run.profiles`、`-Dspring-boot.aot.profiles`、`-Dspring.profiles.active` 直接写在 mvn 命令行上**都不会**传给 AOT 进程（已实测）。
+  也就是说镜像是按环境编译的，prod 镜像用 prod 编译。
+- **OTLP 导出器需要编译期就存在导出地址**，否则导出器不会被包含，运行期配了地址也不会导出（且没有任何报错）。
+  做法：编译期放一个占位地址（如 `application-prod.properties` 里的
+  `management.opentelemetry.tracing.export.otlp.endpoint=http://localhost:4318/v1/traces`），运行期再用环境变量或参数覆盖成真实地址。
+- 同理，各类 `*.enabled` 开关要在编译期确定。已实测的例子：`springdoc.*.enabled`、独立管理端口，以及示例里自己写的
+  `@ConditionalOnProperty` 开关，运行期设置都不生效。`ss.grpc.metrics.prometheus.enabled`
+  同样是 `@ConditionalOnProperty`，按同一原理应当如此（未单独实测）：要关闭抓取端口，请在编译期设置。
 
 ## 指标（Prometheus 抓取）
 
