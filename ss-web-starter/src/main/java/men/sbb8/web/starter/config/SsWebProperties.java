@@ -26,6 +26,11 @@ public class SsWebProperties {
     private final OpenApi openApi = new OpenApi();
 
     /**
+     * 网关透传的用户上下文（UserInfo）
+     */
+    private final UserInfo userInfo = new UserInfo();
+
+    /**
      * HTTP Service Client（@HttpExchange 声明式客户端）
      */
     private final Client client = new Client();
@@ -50,6 +55,17 @@ public class SsWebProperties {
         private String description;
 
         private String version = "v1";
+
+    }
+
+    @Setter
+    @Getter
+    public static class UserInfo {
+
+        /**
+         * 为 true 时，控制器声明 UserInfo 参数而请求缺少 X-User-Id 头，返回 401
+         */
+        private boolean required = false;
 
     }
 

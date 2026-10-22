@@ -84,6 +84,21 @@ class TestApp {
             return body;
         }
 
+        @GetMapping("/ip")
+        String ip() {
+            return men.sbb8.web.starter.utils.WebUtils.getRemoteIp();
+        }
+
+        @GetMapping("/uid")
+        Long uid() {
+            return men.sbb8.web.starter.utils.WebUtils.getCurrentUserId();
+        }
+
+        @GetMapping("/page")
+        Map<String, Object> page(@Valid men.sbb8.web.starter.dto.req.PageReq req) {
+            return Map.of("page", req.getPage(), "size", req.getSize());
+        }
+
         @GetMapping("/me")
         UserInfo me(UserInfo userInfo) {
             return userInfo;

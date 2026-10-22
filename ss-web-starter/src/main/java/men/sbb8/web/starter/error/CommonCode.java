@@ -23,6 +23,8 @@ public enum CommonCode implements BusinessCode {
     PARAMS_ERROR("参数错误"),
     PARAMS_TRANSFER_ERROR("参数类型错误"),
 
+    UNAUTHORIZED("未登录或身份无效"),
+
     SYSTEM_ERROR("系统异常"),
     ;
 

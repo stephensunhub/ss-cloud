@@ -2,7 +2,9 @@ package men.sbb8.web.starter.utils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import men.sbb8.web.starter.error.BusinessException;
+import men.sbb8.web.starter.error.CommonCode;
 import men.sbb8.web.starter.resolver.UserInfoArgumentResolver;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -28,20 +30,16 @@ public final class WebUtils {
     }
 
     /**
-     * 客户端 IP：X-Forwarded-For 首个地址 → X-Real-IP → 连接地址。
-     * 请求头可被客户端伪造，仅在服务位于可信网关之后时可信。
+     * 客户端 IP，即 {@code request.getRemoteAddr()}。
+     * 不自行解析 X-Forwarded-For（最左边的值由客户端随意填写，可伪造）。
+     * 位于代理之后时，由 {@code server.forward-headers-strategy=native}（starter 默认）让容器只信任内网代理，
+     * 并据此还原真实地址。
      */
     public static String getRemoteIp() {
         return getRemoteIp(getRequest());
     }
 
     public static String getRemoteIp(HttpServletRequest request) {
-        for (String header : new String[]{"X-Forwarded-For", "X-Real-IP"}) {
-            String value = request.getHeader(header);
-            if (value != null && !value.isBlank() && !"unknown".equalsIgnoreCase(value.trim())) {
-                return value.split(",")[0].trim();
-            }
-        }
         return request.getRemoteAddr();
     }
 
@@ -54,17 +52,22 @@ public final class WebUtils {
     }
 
     /**
-     * 当前用户 ID（X-User-Id），缺失时抛业务异常
+     * 当前用户 ID（X-User-Id），缺失或不是数字时抛 401。
+     * 该头由网关写入，服务必须只能经网关访问，见 {@link UserInfoArgumentResolver}
      */
     public static Long getCurrentUserId() {
         String userId = getHeader(UserInfoArgumentResolver.HEADER_USER_ID);
         if (userId == null || userId.isBlank()) {
-            throw new BusinessException("Current user userId is empty");
+            throw unauthorized();
         }
         try {
             return Long.parseLong(userId.trim());
         } catch (NumberFormatException e) {
-            throw new BusinessException("Current user userId is invalid: " + userId);
+            throw unauthorized();
         }
+    }
+
+    private static BusinessException unauthorized() {
+        return new BusinessException(HttpStatus.UNAUTHORIZED, CommonCode.UNAUTHORIZED, CommonCode.UNAUTHORIZED.getMsg());
     }
 }

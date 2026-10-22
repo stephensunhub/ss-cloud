@@ -48,11 +48,11 @@ public class SsWebAutoConfiguration {
     }
 
     @Bean
-    public WebMvcConfigurer ssWebMvcConfigurer() {
+    public WebMvcConfigurer ssWebMvcConfigurer(SsWebProperties properties) {
         return new WebMvcConfigurer() {
             @Override
             public void addArgumentResolvers(@NonNull List<HandlerMethodArgumentResolver> resolvers) {
-                resolvers.add(new UserInfoArgumentResolver());
+                resolvers.add(new UserInfoArgumentResolver(properties.getUserInfo().isRequired()));
             }
         };
     }
