@@ -18,7 +18,7 @@ import java.util.Map;
  * 以最低优先级加载 starter 的默认配置（META-INF/ss-web-defaults.yaml），
  * 应用自己的 application.yaml、环境变量、命令行都可以覆盖。
  * 激活 prod / production 环境时，另外默认：关闭 springdoc 接口文档和 Swagger UI，
- * actuator 监控端点使用独立端口 8081（不与业务接口同端口暴露），链路追踪采样率 0.1，
+ * actuator 监控端点使用独立端口 9091 且路径为根（不与业务接口同端口暴露，指标在 :9091/metrics，健康在 :9091/health/...），链路追踪采样率 0.1，
  * 控制台日志使用 ECS 结构化 JSON
  *
  * @author Stephen
@@ -37,7 +37,10 @@ public class SsWebEnvironmentPostProcessor implements EnvironmentPostProcessor {
             environment.getPropertySources().addLast(new MapPropertySource("ss-web-prod-defaults", Map.of(
                     "springdoc.api-docs.enabled", false,
                     "springdoc.swagger-ui.enabled", false,
-                    "management.server.port", 8081,
+                    // 抓取地址与 gRPC starter 一致：:9091/metrics，Prometheus 对所有服务用同一份抓取配置
+                    "management.server.port", 9091,
+                    "management.endpoints.web.base-path", "/",
+                    "management.endpoints.web.path-mapping.prometheus", "metrics",
                     "management.tracing.sampling.probability", 0.1,
                     "logging.structured.format.console", "ecs")));
         }

@@ -33,6 +33,13 @@ class SecurityDefaultsProdTest {
     }
 
     @Test
+    void scrapeTargetMatchesGrpcServices() {
+        org.junit.jupiter.api.Assertions.assertEquals("9091", env.getProperty("management.server.port"));
+        org.junit.jupiter.api.Assertions.assertEquals("/", env.getProperty("management.endpoints.web.base-path"));
+        org.junit.jupiter.api.Assertions.assertEquals("metrics", env.getProperty("management.endpoints.web.path-mapping.prometheus"));
+    }
+
+    @Test
     void userInfoRequiredWhenConfigured() throws Exception {
         mvc.perform(get("/me")).andExpect(status().isUnauthorized());
         mvc.perform(get("/me").header("X-User-Id", "7")).andExpect(status().isOk());

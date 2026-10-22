@@ -125,6 +125,17 @@ class HttpServiceClientTest {
     }
 
     @Test
+    void metricsHaveApplicationTagAndHistograms() throws Exception {
+        client.obj();
+        String body = java.net.http.HttpClient.newHttpClient().send(
+                java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://localhost:" + port + "/actuator/prometheus")).build(),
+                java.net.http.HttpResponse.BodyHandlers.ofString()).body();
+        assertTrue(body.contains("application=\"application\""), "指标应带 application 标签");
+        assertTrue(body.contains("http_server_requests_seconds_bucket"), "HTTP 服务端耗时应有直方图桶");
+        assertTrue(body.contains("http_client_requests_seconds_bucket"), "HTTP 客户端耗时应有直方图桶");
+    }
+
+    @Test
     void userHeadersArePropagatedOnlyInsideARequest() {
         UserInfo outside = client.me().unwrap();
         assertNull(outside.userId());

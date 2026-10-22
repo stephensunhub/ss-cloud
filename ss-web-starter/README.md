@@ -25,7 +25,17 @@ management:
 - 日志里自动带 traceId / spanId；`Resp.traceId` 会返回当前 traceId，前端报错时带上它即可定位
 - 注意是头部采样：未被采样的请求也会有 traceId，但在 Jaeger 里查不到。需要"出错必留"请在 Collector 里做尾部采样
 
+## 指标（Prometheus）
+
+与 `ss-grpc-*` 的风格一致，Prometheus 对所有服务可以用同一份抓取配置：
+
+- 抓取地址：非 prod 在业务端口 `/actuator/prometheus`；**prod 为 `:9091/metrics`**（与 gRPC 服务的抓取地址相同）
+- 所有指标带 `application` 标签（取自 `spring.application.name`）
+- `http.server.requests`、`http.client.requests` 已开启直方图（范围 1ms–10s），可跨实例聚合 p95 / p99
+- 要换端口：`management.server.port`；非 prod 想用同样的路径，可设 `management.endpoints.web.base-path=/` 和
+  `management.endpoints.web.path-mapping.prometheus=metrics`
+
 ## 生产环境默认值
 
-激活 `prod` / `production` 时：关闭 Swagger UI 和 `/v3/api-docs`、actuator 监控端点改用独立端口 `8081`、
+激活 `prod` / `production` 时：关闭 Swagger UI 和 `/v3/api-docs`、actuator 监控端点改用独立端口 `9091`（指标 `:9091/metrics`，健康 `:9091/health/liveness`、`/health/readiness`）、
 链路追踪采样率 `0.1`、控制台日志使用 ECS 结构化 JSON。均可在应用配置里覆盖。

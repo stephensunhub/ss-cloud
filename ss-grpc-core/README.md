@@ -18,6 +18,9 @@ Prometheus 抓取端口、链路追踪与监控指标的默认配置。
 | `ss.grpc.metrics.prometheus.port` | `9091` | 端口被占用时启动会失败并给出提示；`0` 为随机端口 |
 | `ss.grpc.metrics.prometheus.path` | `/metrics` | 抓取路径 |
 
+**与 `ss-web-starter` 在 prod 下的抓取地址一致**（都是 `:9091/metrics`，指标都带 `application` 标签、耗时都有直方图），
+Prometheus 对所有服务可以用同一份抓取配置。
+
 端口只是 Pod 内的端口；用 ServiceMonitor / PodMonitor 或 Pod 注解让 Prometheus 抓取。
 链路追踪（OTLP）与此无关，需要时另行引入导出器。
 

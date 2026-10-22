@@ -35,3 +35,19 @@ management:
     web:
       exposure:
         include: health,info,prometheus
+  metrics:
+    tags:
+      # 所有指标带上服务名，便于在 Prometheus 里按服务过滤（与 gRPC starter 一致）
+      application: ${spring.application.name:application}
+    distribution:
+      # HTTP 耗时默认只有 count/sum/max，开启直方图后才能跨实例聚合出 p95/p99（与 gRPC starter 一致）
+      percentiles-histogram:
+        http.server.requests: true
+        http.client.requests: true
+      # 限定桶的范围，控制时间序列数量
+      minimum-expected-value:
+        http.server.requests: 1ms
+        http.client.requests: 1ms
+      maximum-expected-value:
+        http.server.requests: 10s
+        http.client.requests: 10s
