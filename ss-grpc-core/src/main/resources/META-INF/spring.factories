@@ -1,4 +1,2 @@
 org.springframework.boot.EnvironmentPostProcessor=\
   men.sbb8.grpc.core.config.SsGrpcEnvironmentPostProcessor
-org.springframework.aot.hint.RuntimeHintsRegistrar=\
-  men.sbb8.grpc.core.config.SsGrpcRuntimeHints

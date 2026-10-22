@@ -6,6 +6,14 @@ gRPC **服务端、客户端共用**的部分，不含 gRPC 服务端 / 客户�
 包含：错误模型（`ErrorDetail` proto、`BusinessCode`、`GrpcBusinessException`、`GrpcRemoteException`）、
 Prometheus 抓取端口、链路追踪与监控指标的默认配置。
 
+## 原生镜像（GraalVM）
+
+已用 GraalVM 25（Oracle GraalVM 25.0.4）实际编译并运行验证（服务端 + 客户端，含 protobuf `ErrorDetail`、
+异常转换、健康检查、Prometheus 指标），结果与 JVM 模式一致。示例应用编译约 46 秒，启动 0.03 秒（JVM 模式约 0.8 秒）。
+
+starter 已内置所需提示：默认配置文件，以及 grpc-java 通过反射使用的 `LongAdder`（Boot / Spring gRPC 没有注册它，
+缺了会在 gRPC 服务端 / 客户端启动时失败）。应用自己的 protobuf 消息和 gRPC 服务由 Spring gRPC 的 AOT 处理注册。
+
 ## 指标（Prometheus 抓取）
 
 没有 web 容器，所以 starter 用 JDK 自带的 `HttpServer` 在独立端口提供 `/metrics`（默认 `:9091/metrics`），

@@ -1,0 +1,2 @@
+org.springframework.aot.hint.RuntimeHintsRegistrar=\
+  men.sbb8.grpc.core.config.SsGrpcRuntimeHints

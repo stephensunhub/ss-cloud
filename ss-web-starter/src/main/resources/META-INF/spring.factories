@@ -1,4 +1,2 @@
 org.springframework.boot.EnvironmentPostProcessor=\
   men.sbb8.web.starter.config.SsWebEnvironmentPostProcessor
-org.springframework.aot.hint.RuntimeHintsRegistrar=\
-  men.sbb8.web.starter.config.SsWebRuntimeHints
