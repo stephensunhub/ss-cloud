@@ -58,10 +58,19 @@ public class SsWebProperties {
     @Getter
     public static class OpenApi {
 
+        /**
+         * 接口文档标题，缺省取 spring.application.name
+         */
         private String title;
 
+        /**
+         * 接口文档描述，缺省为 "<标题> 接口文档"
+         */
         private String description;
 
+        /**
+         * 接口文档版本号
+         */
         private String version = "v1";
 
     }
