@@ -12,6 +12,9 @@ gRPC **客户端**规范 starter。引入后获得：调用失败还原为带业
 服务端流式调用用 `GrpcCalls.stream(() -> stub.listXxx(req))`：阻塞 stub 返回的迭代器是在 `hasNext` / `next` 时才抛出失败的，
 不在 `call` 的范围内；`stream` 返回的迭代器会在迭代时同样转成 `GrpcRemoteException`，已经收到的消息不受影响。
 
+客户端流式和双向流式只有异步 stub（`newStub`），失败通过响应观察者的 `onError` 到达：用 `GrpcCalls.observer(responseObserver)`
+包住响应观察者，`onError` 收到的就是 `GrpcRemoteException`（其他类型的失败原样传递）。
+
 ## 客户端默认超时
 
 一元调用没有显式 deadline 时使用 `ss.grpc.client.default-deadline`（默认 30s，0 关闭）。

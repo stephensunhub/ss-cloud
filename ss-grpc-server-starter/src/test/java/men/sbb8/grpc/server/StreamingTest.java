@@ -3,6 +3,7 @@ package men.sbb8.grpc.server;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.grpc.stub.StreamObserver;
 import io.micrometer.core.instrument.Timer;
 import men.sbb8.grpc.client.GrpcCalls;
 import men.sbb8.grpc.core.error.ErrorDetails;
@@ -19,8 +20,13 @@ import org.springframework.grpc.client.ImportGrpcClients;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
@@ -28,14 +34,46 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 @SpringBootTest
 @AutoConfigureTestGrpcTransport
-@ImportGrpcClients(types = GreeterGrpc.GreeterBlockingStub.class)
+@ImportGrpcClients(types = {GreeterGrpc.GreeterBlockingStub.class, GreeterGrpc.GreeterStub.class})
 class StreamingTest {
 
     @Autowired
     GreeterGrpc.GreeterBlockingStub stub;
 
     @Autowired
+    GreeterGrpc.GreeterStub asyncStub;
+
+    @Autowired
     MeterRegistry registry;
+
+    /** 收集响应观察者收到的消息和结局，供测试线程等待 */
+    private static final class Collector implements StreamObserver<HelloReply> {
+        final List<String> messages = new CopyOnWriteArrayList<>();
+        final CompletableFuture<Throwable> outcome = new CompletableFuture<>();
+
+        @Override
+        public void onNext(HelloReply value) {
+            messages.add(value.getMessage());
+        }
+
+        @Override
+        public void onError(Throwable t) {
+            outcome.complete(t);
+        }
+
+        @Override
+        public void onCompleted() {
+            outcome.complete(null);
+        }
+
+        Throwable await() throws Exception {
+            return outcome.get(5, TimeUnit.SECONDS);
+        }
+    }
+
+    private static HelloRequest named(String name) {
+        return HelloRequest.newBuilder().setName(name).build();
+    }
 
     private long serverStreamCalls(String status) {
         return registry.find("grpc.server").tag("grpc.status_code", status).tag("rpc.method", "Stream")
@@ -88,5 +126,59 @@ class StreamingTest {
         StatusRuntimeException e = assertThrows(StatusRuntimeException.class, replies::hasNext);
         assertEquals(Status.Code.INTERNAL, e.getStatus().getCode());
         assertEquals("SYSTEM_ERROR", ErrorDetails.find(e).orElseThrow().getCode());
+    }
+
+    @Test
+    void clientStreamingCompletesNormally() throws Exception {
+        Collector replies = new Collector();
+        StreamObserver<HelloRequest> requests = asyncStub.collect(GrpcCalls.observer(replies));
+        requests.onNext(named("a"));
+        requests.onNext(named("b"));
+        requests.onCompleted();
+        assertNull(replies.await());
+        assertEquals(List.of("got 2"), replies.messages);
+    }
+
+    @Test
+    void clientStreamingFailureBecomesRemoteExceptionWithDetail() throws Exception {
+        Collector replies = new Collector();
+        StreamObserver<HelloRequest> requests = asyncStub.collect(GrpcCalls.observer(replies));
+        requests.onNext(named("a"));
+        requests.onNext(named("fail"));
+        GrpcRemoteException e = assertInstanceOf(GrpcRemoteException.class, replies.await());
+        assertEquals("NAME_TAKEN", e.getCode());
+        assertEquals("名称 collected 已被占用", e.getRemoteMsg());
+        assertEquals(Status.Code.ALREADY_EXISTS, e.getStatus().getCode());
+    }
+
+    @Test
+    void bidirectionalStreamKeepsEarlierRepliesAndFailsWithRemoteException() throws Exception {
+        Collector replies = new Collector();
+        StreamObserver<HelloRequest> requests = asyncStub.chat(GrpcCalls.observer(replies));
+        requests.onNext(named("a"));
+        requests.onNext(named("b"));
+        requests.onNext(named("fail"));
+        GrpcRemoteException e = assertInstanceOf(GrpcRemoteException.class, replies.await());
+        assertEquals("NAME_TAKEN", e.getCode());
+        assertEquals(List.of("echo a", "echo b"), replies.messages);
+    }
+
+    @Test
+    void bidirectionalStreamHidesInternalDetailsOfUnknownExceptions() throws Exception {
+        Collector replies = new Collector();
+        StreamObserver<HelloRequest> requests = asyncStub.chat(GrpcCalls.observer(replies));
+        requests.onNext(named("boom"));
+        GrpcRemoteException e = assertInstanceOf(GrpcRemoteException.class, replies.await());
+        assertEquals("SYSTEM_ERROR", e.getCode());
+        assertEquals(Status.Code.INTERNAL, e.getStatus().getCode());
+        assertEquals(false, String.valueOf(e.getRemoteMsg()).contains("secret"));
+    }
+
+    @Test
+    void observerPassesOtherFailuresThroughUnchanged() throws Exception {
+        Collector replies = new Collector();
+        IllegalStateException failure = new IllegalStateException("local");
+        GrpcCalls.observer(replies).onError(failure);
+        assertEquals(failure, replies.await());
     }
 }

@@ -113,6 +113,56 @@ class TestApp {
             }
         }
 
+        /** 客户端流式：收完所有消息后回复个数；名字是 fail 时在收到那条消息时抛出业务异常 */
+        @Override
+        public StreamObserver<HelloRequest> collect(StreamObserver<HelloReply> out) {
+            return new StreamObserver<>() {
+                private int count;
+
+                @Override
+                public void onNext(HelloRequest request) {
+                    if (request.getName().equals("fail")) {
+                        throw new GrpcBusinessException(DemoCode.NAME_TAKEN, Map.of("name", "collected"));
+                    }
+                    count++;
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                }
+
+                @Override
+                public void onCompleted() {
+                    out.onNext(HelloReply.newBuilder().setMessage("got " + count).build());
+                    out.onCompleted();
+                }
+            };
+        }
+
+        /** 双向流式：每收到一条回一条；名字是 fail 时抛出业务异常，boom 时抛出未知异常 */
+        @Override
+        public StreamObserver<HelloRequest> chat(StreamObserver<HelloReply> out) {
+            return new StreamObserver<>() {
+                @Override
+                public void onNext(HelloRequest request) {
+                    switch (request.getName()) {
+                        case "fail" -> throw new GrpcBusinessException(DemoCode.NAME_TAKEN, Map.of("name", "chatted"));
+                        case "boom" -> throw new IllegalStateException("secret internal detail");
+                        default -> out.onNext(HelloReply.newBuilder().setMessage("echo " + request.getName()).build());
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                }
+
+                @Override
+                public void onCompleted() {
+                    out.onCompleted();
+                }
+            };
+        }
+
         private static RuntimeException remote(StatusRuntimeException failure) {
             return GrpcCalls.call(() -> {
                 throw failure;

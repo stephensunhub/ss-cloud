@@ -54,6 +54,24 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
   应用的 `application.yml`、环境变量、命令行都可以覆盖。激活 `prod` / `production` 环境时有一组更严格的默认值
 - **指标**：Prometheus 抓取，所有指标带 `application` 标签，耗时指标配置了固定的 11 个桶（5ms–10s），可跨实例聚合分位数。
   web（prod）和 gRPC 的抓取地址相同，都是 **`:9091/metrics`**，Prometheus 对所有服务用同一份配置
+- **管理端口 9091 没有认证**（指标、健康检查，不含业务数据），访问控制交给部署层：用 NetworkPolicy 只允许 Prometheus 和
+  kubelet 访问。业务端口（web 的 HTTP、gRPC 服务端口）不受影响。示例（`monitoring` 命名空间里的 Prometheus 抓取）：
+  ```yaml
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata: {name: allow-metrics-scrape}
+  spec:
+    podSelector: {matchLabels: {app: my-service}}   # 选中业务 Pod
+    policyTypes: [Ingress]
+    ingress:
+      - from:
+          - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: monitoring}}
+        ports: [{port: 9091}]
+      # 业务端口按需另写规则；一旦选中 Pod，未列出的入站流量都会被拒绝
+  ```
+  kubelet 探针来自节点本身，多数 CNI 默认放行节点到本节点 Pod 的流量，但这取决于具体的 CNI，需要在自己的集群里确认
+  （这份示例没有在真实集群里验证过）。要在应用内认证的话，不建议给 9091 加共享 token：Prometheus 抓取和探针都要跟着配，
+  还要轮换；需要时用服务网格的 mTLS 或 Prometheus 的 TLS 抓取
 - **链路追踪**：OTLP/HTTP 导出，可对接 Jaeger、Tempo 或 OTel Collector；
   配置了 `management.opentelemetry.tracing.export.otlp.endpoint` 才会导出，prod 采样率默认 0.1
 - **健康检查**：web 用 actuator 的 HTTP 探针；gRPC 用 k8s 的 gRPC 探针（`grpc.health.v1`，`liveness` / `readiness`）
