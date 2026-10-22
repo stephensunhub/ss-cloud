@@ -21,4 +21,25 @@ public class SsGrpcClientProperties {
      */
     private Duration defaultDeadline = Duration.ofSeconds(30);
 
+    /**
+     * 基于 Spring Cloud DiscoveryClient 的服务发现，目标写作 {@code discovery:///服务名}
+     */
+    private Discovery discovery = new Discovery();
+
+    @Getter
+    @Setter
+    public static class Discovery {
+
+        /**
+         * 是否启用 discovery 目标；类路径上没有 Spring Cloud 的 DiscoveryClient 时无论如何都不生效
+         */
+        private boolean enabled = true;
+
+        /**
+         * 兜底刷新间隔：正常由 Spring Cloud 的心跳事件触发刷新，这个定时器只在事件缺失时起作用。
+         * 每个被调用的服务每个间隔最多查询一次注册中心，与请求量无关
+         */
+        private Duration refreshInterval = Duration.ofSeconds(10);
+    }
+
 }
