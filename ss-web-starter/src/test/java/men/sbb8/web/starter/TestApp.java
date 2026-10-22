@@ -7,7 +7,12 @@ import men.sbb8.web.starter.dto.resp.RawResponse;
 import men.sbb8.web.starter.error.BusinessException;
 import men.sbb8.web.starter.error.CommonCode;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigurationExcludeFilter;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.TypeExcludeFilter;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -18,7 +23,17 @@ import org.springframework.web.service.registry.ImportHttpServices;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-@SpringBootApplication
+/**
+ * 等价于 @SpringBootApplication，但组件扫描排除 starter 自己的包：
+ * 测试应用恰好位于 starter 的基础包下，不排除的话 starter 的 Bean 会被当作应用自己的 Bean 扫描进来，
+ * 自动配置就被绕过了。
+ */
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ComponentScan(excludeFilters = {
+        @ComponentScan.Filter(type = FilterType.CUSTOM, classes = {TypeExcludeFilter.class, AutoConfigurationExcludeFilter.class}),
+        @ComponentScan.Filter(type = FilterType.REGEX,
+                pattern = "men\\.sbb8\\.web\\.starter\\.(handler|config|resolver|client|redis|json|persistence)\\..*")})
 @ImportHttpServices(group = "demo", types = DemoClient.class)
 class TestApp {
 

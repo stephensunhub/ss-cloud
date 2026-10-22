@@ -16,6 +16,14 @@ import java.util.List;
 public class SsWebProperties {
 
     /**
+     * 错误响应的格式：resp（默认，沿用 Resp 信封）或 problem-detail（RFC 9457）。
+     * 选 problem-detail 时，成功响应是否仍包装由 response-wrap.enabled 单独控制，
+     * 想要完全符合标准的 REST 风格，把它设为 false
+     */
+    @Setter
+    private ErrorFormat errorFormat = ErrorFormat.RESP;
+
+    /**
      * 统一响应包装
      */
     private final ResponseWrap responseWrap = new ResponseWrap();
@@ -79,5 +87,18 @@ public class SsWebProperties {
          */
         private List<String> propagateUserHeaders = List.of();
 
+    }
+
+    public enum ErrorFormat {
+
+        /**
+         * 与成功响应共用的 Resp 信封：{code, msg, traceId, data}
+         */
+        RESP,
+
+        /**
+         * RFC 9457 Problem Details：application/problem+json，业务码在扩展成员 code
+         */
+        PROBLEM_DETAIL
     }
 }

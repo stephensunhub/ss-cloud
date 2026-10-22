@@ -41,6 +41,15 @@ class RemoteErrorHandlerTest {
     }
 
     @Test
+    void readsCodeAndDetailFromProblemDetails() {
+        MockClientHttpResponse response = new MockClientHttpResponse(
+                "{\"status\":400,\"code\":\"PARAMS_ERROR\",\"detail\":\"size 不能超过 200\"}".getBytes(), HttpStatus.BAD_REQUEST);
+        RemoteCallException e = assertThrows(RemoteCallException.class, () -> handler.handle(request, response));
+        assertEquals("PARAMS_ERROR", e.getCode());
+        assertEquals("size 不能超过 200", e.getRemoteMsg());
+    }
+
+    @Test
     void nonJsonBodyKeepsOnlyRawText() {
         MockClientHttpResponse response = new MockClientHttpResponse("<html>bad gateway</html>".getBytes(), HttpStatus.BAD_GATEWAY);
         RemoteCallException e = assertThrows(RemoteCallException.class, () -> handler.handle(request, response));

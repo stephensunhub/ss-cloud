@@ -36,8 +36,8 @@ public class SsWebAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public GlobalExceptionHandler globalExceptionHandler() {
-        return new GlobalExceptionHandler();
+    public GlobalExceptionHandler globalExceptionHandler(SsWebProperties properties) {
+        return new GlobalExceptionHandler(properties.getErrorFormat());
     }
 
     @Bean

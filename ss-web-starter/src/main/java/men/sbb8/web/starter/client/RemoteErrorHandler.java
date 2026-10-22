@@ -13,7 +13,7 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 把下游的非 2xx 响应转成 {@link RemoteCallException}，响应体是 {@code Resp} 结构时提取 code 和 msg
+ * 把下游的非 2xx 响应转成 {@link RemoteCallException}，响应体是 {@code Resp} 结构或带 code 扩展成员的 RFC 9457 Problem Details 时，提取 code 和 msg/detail
  *
  * @author Stephen
  */
@@ -36,7 +36,7 @@ public class RemoteErrorHandler implements RestClient.ResponseSpec.ErrorHandler 
             JsonNode node = jsonMapper.readTree(body);
             if (node.isObject() && node.path("code").isString()) {
                 code = node.path("code").asString();
-                msg = node.path("msg").asString(null);
+                msg = node.path("msg").asString(node.path("detail").asString(null));
             }
         } catch (RuntimeException ignored) {
             // 不是 JSON（网关错误页等），只保留原始响应体
