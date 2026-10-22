@@ -21,7 +21,9 @@
     <modules>
         <module>ss-common</module>
         <module>ss-web-starter</module>
-        <module>ss-grpc-starter</module>
+        <module>ss-grpc-core</module>
+        <module>ss-grpc-server-starter</module>
+        <module>ss-grpc-client-starter</module>
     </modules>
 
     <properties>
@@ -58,7 +60,17 @@
             </dependency>
             <dependency>
                 <groupId>men.sbb8</groupId>
-                <artifactId>ss-grpc-starter</artifactId>
+                <artifactId>ss-grpc-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>men.sbb8</groupId>
+                <artifactId>ss-grpc-server-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>men.sbb8</groupId>
+                <artifactId>ss-grpc-client-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

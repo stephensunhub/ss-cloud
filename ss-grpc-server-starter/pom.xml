@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>men.sbb8</groupId>
+        <artifactId>ss-cloud</artifactId>
+        <version>2026.10.21.0</version>
+    </parent>
+    <artifactId>ss-grpc-server-starter</artifactId>
+    <name>ss-grpc-server-starter</name>
+    <description>gRPC 服务端规范 starter：全局异常转换、健康检查（存活 / 就绪）默认配置，含 ss-grpc-core 的监控与追踪默认配置</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>men.sbb8</groupId>
+            <artifactId>ss-grpc-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-grpc-server</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- 集成测试要同时起服务端和客户端；服务端 starter 本身不依赖客户端 -->
+        <dependency>
+            <groupId>men.sbb8</groupId>
+            <artifactId>ss-grpc-client-starter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-grpc-server-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-grpc-client-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 从 Maven 下载 protoc 与 grpc 插件，不要求本机安装；版本跟随 Spring Boot 管理的 protobuf / grpc-java -->
+            <plugin>
+                <groupId>io.github.ascopes</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <configuration>
+                    <protoc>${protobuf-java.version}</protoc>
+                    <plugins>
+                        <plugin kind="binary-maven">
+                            <groupId>io.grpc</groupId>
+                            <artifactId>protoc-gen-grpc-java</artifactId>
+                            <version>${grpc-java.version}</version>
+                            <options>@generated=omit</options>
+                        </plugin>
+                    </plugins>
+                </configuration>
+                <executions>
+                    <!-- 父 POM 默认绑定的主代码生成：本模块的 proto 只在测试里用，主代码没有 proto -->
+                    <execution>
+                        <id>generate</id>
+                        <phase>none</phase>
+                    </execution>
+                    <execution>
+                        <id>generate-test</id>
+                        <goals>
+                            <goal>generate-test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package ss.grpc.v1;
+
+option java_multiple_files = true;
+option java_package = "men.sbb8.grpc.core.proto";
+option java_outer_classname = "ErrorProto";
+
+// 业务错误详情，随 gRPC 调用失败的 trailers（二进制 metadata）一起返回。
+// gRPC status 表达错误类别，ErrorDetail 表达具体的业务码和面向用户的消息。
+message ErrorDetail {
+  // 业务码，如 PARAMS_ERROR
+  string code = 1;
+  // 已渲染好参数的错误消息
+  string msg = 2;
+  // 渲染消息用到的参数
+  map<string, string> params = 3;
+}
