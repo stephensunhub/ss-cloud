@@ -13,7 +13,7 @@ gRPC **客户端**规范 starter。引入后获得：调用失败还原为带业
 不在 `call` 的范围内；`stream` 返回的迭代器会在迭代时同样转成 `GrpcRemoteException`，已经收到的消息不受影响。
 
 客户端流式和双向流式只有异步 stub（`newStub`），失败通过响应观察者的 `onError` 到达：用 `GrpcCalls.observer(responseObserver)`
-包住响应观察者，`onError` 收到的就是 `GrpcRemoteException`（其他类型的失败原样传递）。
+包住响应观察者，`onError` 收到的就是 `GrpcRemoteException`（其他类型的失败原样传递）。已在原生镜像里实测客户端流和双向流的成功与失败（业务异常带业务码，未知异常不泄露内部细节）。
 
 ## 客户端默认超时
 

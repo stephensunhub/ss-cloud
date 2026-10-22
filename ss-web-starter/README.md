@@ -261,7 +261,7 @@ starter 不自己创建线程池 Bean，只改了几个不适合生产的默认�
   配合 `reject-tasks-when-limit-reached=true` 可以在超限时拒绝而不是排队
 - **需要隔离的线程池**（例如把慢的外部调用与其他任务隔开）由应用自己定义，用 Boot 的 `ThreadPoolTaskExecutorBuilder` 创建会自动继承上面的默认值。
   starter 不预置 `ioExecutor` / `cpuExecutor` 这类命名线程池，因为怎么隔离是应用的设计
-- 没有在原生镜像里验证过这一组配置（只有 JVM 下的测试）
+- 已用 GraalVM 25 的原生镜像实测：默认（虚拟线程）模式下 `@Async` 线程里的 `traceId` 与请求一致；用 `prod` 之外的 `spring.threads.virtual.enabled=false` 编译的镜像里，线程池满了会拒绝任务并计数 `executor.rejected`。注意虚拟线程还是线程池是**编译期**就定下的，运行期改这个开关对原生镜像无效
 
 ## 生产环境默认值
 
