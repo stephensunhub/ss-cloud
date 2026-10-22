@@ -22,11 +22,14 @@ import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.ErrorResponse;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.util.Objects;
 
 /**
@@ -74,6 +77,28 @@ public class GlobalExceptionHandler {
         }
         log.error("下游调用失败: {}, body={}", e.getMessage(), StringUtils.truncate(e.getBody(), 500));
         return error(HttpStatus.BAD_GATEWAY, HttpStatus.BAD_GATEWAY.name(), "下游服务异常");
+    }
+
+    /**
+     * 下游根本没有给出 HTTP 响应：地址解析失败、连接被拒、连接中断、超时，客户端抛出 {@link ResourceAccessException}。
+     * 超时 504，其余 502。故障（下游宕机或抖动）会成批出现，所以只打一行 WARN，不带堆栈。
+     */
+    @ExceptionHandler(ResourceAccessException.class)
+    public ResponseEntity<?> handleResourceAccess(ResourceAccessException e) {
+        boolean timeout = isTimeout(e);
+        log.warn("下游{}: {}", timeout ? "超时" : "不可达", e.getMessage());
+        HttpStatus status = timeout ? HttpStatus.GATEWAY_TIMEOUT : HttpStatus.BAD_GATEWAY;
+        return error(status, status.name(), timeout ? "下游服务超时" : "下游服务异常");
+    }
+
+    private static boolean isTimeout(Throwable throwable) {
+        Throwable current = throwable;
+        for (int depth = 0; current != null && depth < 10; depth++, current = current.getCause()) {
+            if (current instanceof SocketTimeoutException || current instanceof HttpTimeoutException) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isFrameworkError(RemoteCallException e) {

@@ -3,7 +3,7 @@ package men.sbb8.web.starter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import men.sbb8.web.starter.dto.UserInfo;
-import men.sbb8.web.starter.dto.resp.RawResponse;
+import men.sbb8.web.starter.dto.resp.Resp;
 import men.sbb8.web.starter.error.BusinessException;
 import men.sbb8.web.starter.error.CommonCode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +43,26 @@ class TestApp {
     record Body(@NotBlank(message = "name 不能为空") String name) {
     }
 
+    interface DownClient {
+        @org.springframework.web.service.annotation.GetExchange("/obj")
+        Resp<Map<String, Object>> get();
+    }
+
+    interface LbClient {
+        @org.springframework.web.service.annotation.GetExchange("/obj")
+        Resp<Map<String, Object>> obj();
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ImportHttpServices(group = "down", types = DownClient.class)
+    static class DownConfig {
+    }
+
+    @org.springframework.context.annotation.Configuration
+    @ImportHttpServices(group = "lb", types = LbClient.class)
+    static class LbConfig {
+    }
+
     @RestController
     static class DemoController {
 
@@ -50,23 +70,18 @@ class TestApp {
         DemoClient demoClient;
 
         @GetMapping("/obj")
-        Map<String, Object> obj() {
-            return Map.of("time", LocalDateTime.of(2026, 1, 2, 3, 4, 5), "n", 1);
+        Resp<Map<String, Object>> obj() {
+            return Resp.ok(Map.of("time", LocalDateTime.of(2026, 1, 2, 3, 4, 5), "n", 1));
         }
 
         @GetMapping("/str")
-        String str() {
-            return "hello";
+        Resp<String> str() {
+            return Resp.ok("hello");
         }
 
         @GetMapping("/void")
-        void none() {
-        }
-
-        @RawResponse
-        @GetMapping("/raw")
-        Map<String, Object> raw() {
-            return Map.of("a", 1);
+        Resp<Void> none() {
+            return Resp.ok(null);
         }
 
         @GetMapping("/biz")
@@ -80,33 +95,23 @@ class TestApp {
         }
 
         @GetMapping("/param")
-        String param(@RequestParam int id) {
-            return "x";
+        Resp<String> param(@RequestParam int id) {
+            return Resp.ok("x");
         }
 
         @PostMapping("/valid")
-        String valid(@Valid @RequestBody Body body) {
-            return body.name();
+        Resp<String> valid(@Valid @RequestBody Body body) {
+            return Resp.ok(body.name());
         }
 
         @GetMapping("/time")
-        LocalDateTime time(@RequestParam LocalDateTime at) {
-            return at;
+        Resp<LocalDateTime> time(@RequestParam LocalDateTime at) {
+            return Resp.ok(at);
         }
 
         @PostMapping("/time-body")
-        TimeBody timeBody(@RequestBody TimeBody body) {
-            return body;
-        }
-
-        @GetMapping(value = "/plain", produces = "text/plain")
-        String plain() {
-            return "plain";
-        }
-
-        @GetMapping(value = "/json-str", produces = "application/json")
-        String jsonStr() {
-            return "text";
+        Resp<TimeBody> timeBody(@RequestBody TimeBody body) {
+            return Resp.ok(body);
         }
 
         /** 下游 404（框架生成）经全局异常处理后对外应是 502，而不是 404 */
@@ -120,41 +125,59 @@ class TestApp {
         io.micrometer.tracing.Tracer tracer;
 
         @GetMapping("/trace-id")
-        String traceId() {
-            return tracer.currentSpan().context().traceId();
+        Resp<String> traceId() {
+            return Resp.ok(tracer.currentSpan().context().traceId());
         }
 
         /** 经声明式客户端调用自己的 /trace-id，验证调用链跨服务串联 */
         @GetMapping("/relay-trace")
-        Map<String, String> relayTrace() {
-            return Map.of("caller", tracer.currentSpan().context().traceId(),
-                    "callee", demoClient.traceId().unwrap());
+        Resp<Map<String, String>> relayTrace() {
+            return Resp.ok(Map.of("caller", tracer.currentSpan().context().traceId(),
+                    "callee", demoClient.traceId().unwrap()));
         }
 
         @GetMapping("/ip")
-        String ip() {
-            return men.sbb8.web.starter.utils.WebUtils.getRemoteIp();
+        Resp<String> ip() {
+            return Resp.ok(men.sbb8.web.starter.utils.WebUtils.getRemoteIp());
         }
 
         @GetMapping("/uid")
-        Long uid() {
-            return men.sbb8.web.starter.utils.WebUtils.getCurrentUserId();
+        Resp<Long> uid() {
+            return Resp.ok(men.sbb8.web.starter.utils.WebUtils.getCurrentUserId());
         }
 
         @GetMapping("/page")
-        Map<String, Object> page(@Valid men.sbb8.web.starter.dto.req.PageReq req) {
-            return Map.of("page", req.getPage(), "size", req.getSize());
+        Resp<Map<String, Object>> page(@Valid men.sbb8.web.starter.dto.req.PageReq req) {
+            return Resp.ok(Map.of("page", req.getPage(), "size", req.getSize()));
         }
 
         @GetMapping("/me")
-        UserInfo me(UserInfo userInfo) {
-            return userInfo;
+        Resp<UserInfo> me(UserInfo userInfo) {
+            return Resp.ok(userInfo);
         }
 
         /** 经声明式客户端回调自己的 /me，验证用户头透传 */
         @GetMapping("/relay")
-        UserInfo relay() {
-            return demoClient.me().unwrap();
+        Resp<UserInfo> relay() {
+            return Resp.ok(demoClient.me().unwrap());
+        }
+
+        @Autowired
+        DownClient downClient;
+
+        @Autowired
+        LbClient lbClient;
+
+        /** 下游根本连不上（连接被拒）经全局异常处理后对外应是 502 */
+        @GetMapping("/relay-down")
+        Resp<Map<String, Object>> relayDown() {
+            return downClient.get();
+        }
+
+        /** 按服务名（http://wallet）经负载均衡调用 */
+        @GetMapping("/relay-lb")
+        Resp<Map<String, Object>> relayLb() {
+            return Resp.ok(lbClient.obj().unwrap());
         }
 
         /** 下游 5xx 经全局异常处理后对外应是 502 */

@@ -65,7 +65,7 @@ class SsWebStarterTest {
     }
 
     @Test
-    void wrapsObject() throws Exception {
+    void respEnvelope() throws Exception {
         mvc.perform(get("/obj"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
@@ -76,7 +76,7 @@ class SsWebStarterTest {
     }
 
     @Test
-    void wrapsStringAsJson() throws Exception {
+    void respWithString() throws Exception {
         mvc.perform(get("/str"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -84,13 +84,8 @@ class SsWebStarterTest {
     }
 
     @Test
-    void wrapsVoid() throws Exception {
+    void respWithoutData() throws Exception {
         mvc.perform(get("/void")).andExpect(status().isOk());
-    }
-
-    @Test
-    void rawResponseNotWrapped() throws Exception {
-        mvc.perform(get("/raw")).andExpect(jsonPath("$.a").value(1)).andExpect(jsonPath("$.code").doesNotExist());
     }
 
     @Test

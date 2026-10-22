@@ -152,6 +152,16 @@ class HttpServiceClientTest {
     }
 
     @Test
+    void unreachableDownstreamIs502NotAnInternalError() {
+        RestClient plain = RestClient.builder().baseUrl("http://localhost:" + port)
+                .defaultStatusHandler(HttpStatusCode::isError, (req, res) -> { }).build();
+        var response = plain.get().uri("/relay-down").retrieve().toEntity(new ParameterizedTypeReference<Resp<Void>>() {});
+        assertEquals(502, response.getStatusCode().value());
+        assertEquals("BAD_GATEWAY", response.getBody().getCode());
+        assertEquals("下游服务异常", response.getBody().getMsg());
+    }
+
+    @Test
     void userHeadersArePropagatedOnlyInsideARequest() {
         UserInfo outside = client.me().unwrap();
         assertNull(outside.userId());

@@ -1,6 +1,6 @@
 # ss-web-starter
 
-引入依赖即可获得：统一响应 `Resp`、全局异常处理、`UserInfo` 参数注入、OpenAPI 文档、Jackson / 时间格式约定、
+引入依赖即可获得：统一信封 `Resp` 与全局异常处理（成功响应由 controller 自己返回）、`UserInfo` 参数注入、OpenAPI 文档、Jackson / 时间格式约定、
 HTTP 声明式客户端（`@HttpExchange`）、Redis JSON 序列化、监控与链路追踪的默认配置。配置前缀 `ss.web`，全部有默认值。
 
 ## 快速开始
@@ -19,10 +19,17 @@ HTTP 声明式客户端（`@HttpExchange`）、Redis JSON 序列化、监控与�
 
 ## 统一响应与异常
 
-控制器返回任意对象，自动包装成 `Resp`：`{"code":"SUCCESS","msg":"成功","data":…,"traceId":"…"}`。
+成功响应由控制器自己决定怎么返回，starter **不会替它包装**；统一的信封 `Resp`（`{"code":"SUCCESS","msg":"成功","data":…,"traceId":"…"}`）
+用 `Resp.ok(...)` 返回，声明返回类型为 `Resp<T>`，接口文档里也就自然是这个结构：
 
-- 不想包装：方法或类上标 `@RawResponse`；返回 `Resp`、`ProblemDetail`、`Resource`、`byte[]`，
-  或显式声明 `produces` 为非 JSON 的接口（如 `text/plain`）也不会被包装；全局关闭用 `ss.web.response-wrap.enabled=false`
+```java
+@GetMapping("/orders/{id}")
+Resp<Order> get(@PathVariable long id) {
+    return Resp.ok(orderService.get(id));
+}
+```
+
+异常则**统一**由 starter 转成 `Resp`（见下表），不需要每个 controller 自己处理。
 - 抛业务异常，业务码是实现了 `BusinessCode` 的枚举：
 
   ```java
@@ -41,13 +48,14 @@ HTTP 声明式客户端（`@HttpExchange`）、Redis JSON 序列化、监控与�
 | `BusinessException` | 自带，常用构造器默认 200（无参和包装其他异常的构造器为 500 + `SYSTEM_ERROR`） | 业务码 |
 | 参数绑定 / 校验失败、缺少参数、类型不匹配、请求体无法解析 | 400 | `PARAMS_ERROR` / `PARAMS_LOSS` / `PARAMS_TRANSFER_ERROR` |
 | Spring MVC 自己的 404 / 405 / 415 等 | 沿用其状态码 | 状态名，如 `NOT_FOUND` |
-| 下游调用失败（`RemoteCallException`） | 下游业务错误（4xx 且带业务码）透传；其余 502 | 透传的业务码 / `BAD_GATEWAY` |
+| 下游返回了错误响应（`RemoteCallException`） | 下游业务错误（4xx 且带业务码）透传；其余 502 | 透传的业务码 / `BAD_GATEWAY` |
+| 下游根本没有响应：地址解析失败、连接被拒、无可用实例、超时 | 超时 504，其余 502；只打一行 WARN，不带堆栈 | `GATEWAY_TIMEOUT` / `BAD_GATEWAY` |
 | 其他未知异常 | 500，不暴露细节 | `SYSTEM_ERROR` |
 
 - 应用自己的 `@RestControllerAdvice` 优先于 starter 的处理（starter 的优先级最低），可以覆盖其中任何一项
 - 错误格式可切换：`ss.web.error-format=problem-detail` 输出 RFC 9457（`application/problem+json`），
   业务码和 `traceId` 作为扩展成员 `code`、`traceId`；这个格式下业务异常的 2xx 状态码改为 422。
-  成功响应是否仍包装 `Resp`，由 `response-wrap.enabled` 单独控制，想要纯标准 REST 风格就把它设为 `false`
+  成功响应由控制器自己决定，想要纯标准 REST 风格就直接返回对象，不用 `Resp.ok`
 
 ## 用户上下文 `UserInfo`
 
@@ -87,6 +95,18 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
 - 非 2xx 响应统一转成 `RemoteCallException`（带 `status`、下游的 `code` / `remoteMsg`、原始响应体，最多读 64KB）；
   返回 `Resp<T>` 的方法用 `resp.unwrap()` 取数据，失败时抛 `BusinessException`
 - 默认超时：连接 3 秒、读取 30 秒，用 `spring.http.clients.connect-timeout` / `read-timeout` 调整
+- **按服务名调用**（服务发现，如 Consul）：引入 `spring-cloud-starter-loadbalancer` 和服务发现后，把分组列入
+  `ss.web.client.load-balanced-groups`，`base-url` 里写服务名即可，应用里不用自己写负载均衡配置：
+
+  ```yaml
+  spring.http.serviceclient.wallet.base-url: http://wallet     # 服务名
+  ss.web.client.load-balanced-groups: wallet
+  ```
+
+  没有可用实例时同样返回 502。配置了这一项却没引入 Spring Cloud 时，启动就会失败并说明原因。
+  **只支持 JVM 模式**：Spring Cloud LoadBalancer 在 GraalVM 原生镜像里不可用（见下文"原生镜像"）。
+  已在 Boot 4.1.1 + Spring Cloud 2025.1.3（spring-cloud-consul 5.0.3）+ 真实 Consul 上实测；
+  注意官方 2025.1 列车对应的是 Boot 4.0.x，目前没有正式对应 Boot 4.1 的列车
 - 这些处理只作用于 `@HttpExchange` 客户端，不影响应用自己创建的 `RestClient`
 - 用户头只在请求线程内才能透传；链路追踪的上下文会自动延续到下游
 
@@ -111,17 +131,17 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
 
 ## 接口文档（OpenAPI）
 
-内置 springdoc：`/v3/api-docs` 和 Swagger UI。文档里的响应按 `Resp` 描述（不是裸的返回类型），
+内置 springdoc：`/v3/api-docs` 和 Swagger UI。文档里的响应就是控制器声明的返回类型（用 `Resp<T>` 时即信封结构），
 `UserInfo` 参数不会出现；**prod 环境默认关闭**。
 
 ## 配置项一览
 
 | 配置 | 默认值 | 说明 |
 |---|---|---|
-| `ss.web.response-wrap.enabled` | `true` | 是否把返回值包装成 `Resp` |
 | `ss.web.error-format` | `resp` | 错误响应格式：`resp` 或 `problem-detail` |
 | `ss.web.user-info.required` | `false` | 缺少 `X-User-Id` 时是否返回 401 |
 | `ss.web.client.propagate-user-headers` | 空 | 需要透传用户头的客户端分组名 |
+| `ss.web.client.load-balanced-groups` | 空 | 按服务名调用（经 Spring Cloud 负载均衡）的客户端分组名，见上文 |
 | `ss.web.open-api.title` | `spring.application.name` | 接口文档标题 |
 | `ss.web.open-api.description` | `<标题> 接口文档` | 接口文档描述 |
 | `ss.web.open-api.version` | `v1` | 接口文档版本 |
@@ -197,11 +217,17 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
 - **OTLP 导出器需要编译期就存在导出地址**，否则导出器不会被包含，运行期配了地址也不会导出（且没有任何报错）。
   做法：编译期放一个占位地址（如 `application-prod.properties` 里的
   `management.opentelemetry.tracing.export.otlp.endpoint=http://localhost:4318/v1/traces`），运行期再用环境变量或参数覆盖成真实地址。
-- 同理，各类 `*.enabled` 开关要在编译期确定。已实测的例子：`springdoc.*.enabled`、独立管理端口，
-  以及示例里自己写的 `@ConditionalOnProperty` 开关，运行期设置都不生效。`ss.web.response-wrap.enabled`
-  同样是 `@ConditionalOnProperty`，按同一原理应当如此（未单独实测）。
+- 同理，各类 `*.enabled` 开关要在编译期确定。已实测：`springdoc.*.enabled`、独立管理端口、示例里自己写的
+  `@ConditionalOnProperty` 开关、以及 gRPC 的 `ss.grpc.metrics.prometheus.enabled`，运行期设置在原生镜像里都不生效
+  （JVM 模式下是生效的）
 
 ## 生产环境默认值
 
 激活 `prod` / `production` 时：关闭 Swagger UI 和 `/v3/api-docs`、actuator 监控端点改用独立端口 `9091`（指标 `:9091/metrics`，健康 `:9091/health/liveness`、`/health/readiness`）、
 链路追踪采样率 `0.1`、控制台日志使用 ECS 结构化 JSON。均可在应用配置里覆盖。
+
+### Consul / Spring Cloud 与原生镜像
+
+已实测，**原生镜像下基本不可用**（JVM 模式正常）：`@RefreshScope` 让 AOT 编译直接失败；读取 Consul KV 配置因 `GetValue` 缺反射提示而加载失败；
+LoadBalancer 创建子上下文失败，按服务名的调用变成 500；服务注册请求发出后 Consul 里没有该服务（原因未查明）。
+要同时使用 GraalVM 和 Consul，需要自己补反射提示或等上游支持。

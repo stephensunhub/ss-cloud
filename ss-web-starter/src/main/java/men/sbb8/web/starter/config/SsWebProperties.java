@@ -17,16 +17,10 @@ public class SsWebProperties {
 
     /**
      * 错误响应的格式：resp（默认，沿用 Resp 信封）或 problem-detail（RFC 9457）。
-     * 选 problem-detail 时，成功响应是否仍包装由 response-wrap.enabled 单独控制，
-     * 想要完全符合标准的 REST 风格，把它设为 false
+     * 成功响应由控制器自己决定怎么返回（用 Resp.ok(...) 包装，或直接返回对象），starter 不会替它包装
      */
     @Setter
     private ErrorFormat errorFormat = ErrorFormat.RESP;
-
-    /**
-     * 统一响应包装
-     */
-    private final ResponseWrap responseWrap = new ResponseWrap();
 
     /**
      * OpenAPI 文档信息，title 缺省取 spring.application.name
@@ -42,17 +36,6 @@ public class SsWebProperties {
      * HTTP Service Client（@HttpExchange 声明式客户端）
      */
     private final Client client = new Client();
-
-    @Setter
-    @Getter
-    public static class ResponseWrap {
-
-        /**
-         * 是否把控制器返回值包装为 Resp，方法或类上标注 @RawResponse 可单独跳过
-         */
-        private boolean enabled = true;
-
-    }
 
     @Setter
     @Getter
@@ -95,6 +78,13 @@ public class SsWebProperties {
          * 默认不透传，避免把用户标识发给第三方接口
          */
         private List<String> propagateUserHeaders = List.of();
+
+        /**
+         * 按服务名调用的客户端分组：这些分组的 base-url 里写服务名（如 {@code http://wallet}），请求经 Spring Cloud LoadBalancer
+         * 解析到具体实例。需要引入 spring-cloud-starter-loadbalancer 和服务发现（如 Consul）。
+         * 只支持 JVM 模式：LoadBalancer 在 GraalVM 原生镜像里不可用
+         */
+        private List<String> loadBalancedGroups = List.of();
 
     }
 

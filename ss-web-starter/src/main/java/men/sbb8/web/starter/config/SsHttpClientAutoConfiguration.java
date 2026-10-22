@@ -1,11 +1,17 @@
 package men.sbb8.web.starter.config;
 
+import men.sbb8.web.starter.client.NoInstanceAsIoErrorInterceptor;
 import men.sbb8.web.starter.client.RemoteErrorHandler;
 import men.sbb8.web.starter.client.UserHeadersInterceptor;
+import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingClass;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.support.RestClientHttpServiceGroupConfigurer;
@@ -43,5 +49,52 @@ public class SsHttpClientAutoConfiguration {
                         .forEachClient((group, builder) -> builder.requestInterceptor(new UserHeadersInterceptor()));
             }
         };
+    }
+
+    /**
+     * ss.web.client.load-balanced-groups：给这些 {@code @HttpExchange} 分组挂上 Spring Cloud 的负载均衡拦截器，
+     * base-url 里写服务名即可。Spring Cloud 没有提供现成的 HTTP 服务分组集成，所以在这里补上。
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass(DeferringLoadBalancerInterceptor.class)
+    static class LoadBalancedGroupsConfiguration {
+
+        @Bean
+        RestClientHttpServiceGroupConfigurer ssLoadBalancedGroupConfigurer(
+                SsWebProperties properties, ObjectProvider<DeferringLoadBalancerInterceptor> interceptor) {
+            List<String> groups = properties.getClient().getLoadBalancedGroups();
+            return groupConfigurer -> {
+                if (groups.isEmpty()) {
+                    return;
+                }
+                DeferringLoadBalancerInterceptor loadBalancer = interceptor.getIfAvailable();
+                if (loadBalancer == null) {
+                    throw new IllegalStateException("ss.web.client.load-balanced-groups 配置了 " + groups
+                            + "，但没有负载均衡拦截器：请引入 spring-cloud-starter-loadbalancer，并配置服务发现（如 Consul）");
+                }
+                NoInstanceAsIoErrorInterceptor wrapped = new NoInstanceAsIoErrorInterceptor(loadBalancer);
+                groupConfigurer.filterByName(groups.toArray(String[]::new))
+                        .forEachClient((group, builder) -> builder.requestInterceptor(wrapped));
+            };
+        }
+    }
+
+    /**
+     * 配置了 load-balanced-groups 却没有引入 Spring Cloud：启动时就失败，而不是悄悄地把服务名当主机名去解析
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnMissingClass("org.springframework.cloud.client.loadbalancer.DeferringLoadBalancerInterceptor")
+    static class LoadBalancedGroupsWithoutSpringCloud {
+
+        @Bean
+        InitializingBean ssLoadBalancedGroupsCheck(SsWebProperties properties) {
+            return () -> {
+                List<String> groups = properties.getClient().getLoadBalancedGroups();
+                if (!groups.isEmpty()) {
+                    throw new IllegalStateException("ss.web.client.load-balanced-groups 配置了 " + groups
+                            + "，但类路径上没有 Spring Cloud：请引入 spring-cloud-starter-loadbalancer，并配置服务发现（如 Consul）");
+                }
+            };
+        }
     }
 }

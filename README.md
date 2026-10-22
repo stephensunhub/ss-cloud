@@ -8,7 +8,7 @@
 
 | 模块 | 用途 | 文档 |
 |---|---|---|
-| [`ss-web-starter`](ss-web-starter/README.md) | **Servlet Web 服务**：统一响应与异常、`UserInfo`、`@HttpExchange` 客户端、Jackson / 时间格式、Redis、OpenAPI | [README](ss-web-starter/README.md) |
+| [`ss-web-starter`](ss-web-starter/README.md) | **Servlet Web 服务**：统一异常、`UserInfo`、`@HttpExchange` 客户端、Jackson / 时间格式、Redis、OpenAPI | [README](ss-web-starter/README.md) |
 | [`ss-grpc-server-starter`](ss-grpc-server-starter/README.md) | **gRPC 服务端**：异常转换、健康检查（存活 / 就绪）、端口默认值 | [README](ss-grpc-server-starter/README.md) |
 | [`ss-grpc-client-starter`](ss-grpc-client-starter/README.md) | **gRPC 客户端**：失败还原为带业务码的异常、默认超时 | [README](ss-grpc-client-starter/README.md) |
 | [`ss-grpc-core`](ss-grpc-core/README.md) | gRPC 服务端、客户端共用：错误模型、指标抓取、链路追踪与监控默认配置。**一般不直接引入** | [README](ss-grpc-core/README.md) |

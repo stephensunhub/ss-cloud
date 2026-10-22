@@ -38,7 +38,7 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
   `management.opentelemetry.tracing.export.otlp.endpoint=http://localhost:4318/v1/traces`），运行期再用环境变量或参数覆盖成真实地址。
 - 同理，各类 `*.enabled` 开关要在编译期确定。已实测的例子：`springdoc.*.enabled`、独立管理端口，以及示例里自己写的
   `@ConditionalOnProperty` 开关，运行期设置都不生效。`ss.grpc.metrics.prometheus.enabled`
-  同样是 `@ConditionalOnProperty`，按同一原理应当如此（未单独实测）：要关闭抓取端口，请在编译期设置。
+  同样如此，**已实测**（原生镜像里运行期设 `enabled=false`，9091 仍在监听）：要关闭抓取端口，请在编译期设置。
 
 ## 指标（Prometheus 抓取）
 
