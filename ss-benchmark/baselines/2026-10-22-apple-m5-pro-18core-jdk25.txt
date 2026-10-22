@@ -1,0 +1,88 @@
+### 环境: Apple M5 Pro, 18 核, JDK 25.0.3, 开始 2026-10-22 17:55:53
+### 负载(开始前): 52.08 24.40 18.20
+
+### 实验 1：并发扫描（raw = 原生 grpc-java；spring-prod = ss-grpc-server-starter 的 prod 配置；8 条连接；每种启动 2 次）
+RESULT label=exp1-raw run=1 conc=1 ch=1 win=1 rps=19413 p50=0.048ms p99=0.128ms p999=0.321ms max=5.3ms errs=0 srvCores=0.72 srvUsPerReq=36.9
+RESULT label=exp1-raw run=1 conc=1 ch=1 win=2 rps=19892 p50=0.048ms p99=0.071ms p999=0.223ms max=1.8ms errs=0 srvCores=0.72 srvUsPerReq=36.1
+RESULT label=exp1-raw run=1 conc=8 ch=8 win=1 rps=64327 p50=0.120ms p99=0.187ms p999=0.673ms max=1.4ms errs=0 srvCores=6.58 srvUsPerReq=102.3
+RESULT label=exp1-raw run=1 conc=8 ch=8 win=2 rps=64115 p50=0.121ms p99=0.185ms p999=0.668ms max=1.5ms errs=0 srvCores=6.54 srvUsPerReq=102.0
+RESULT label=exp1-raw run=1 conc=32 ch=8 win=1 rps=101089 p50=0.294ms p99=0.758ms p999=1.589ms max=5.1ms errs=0 srvCores=13.15 srvUsPerReq=130.1
+RESULT label=exp1-raw run=1 conc=32 ch=8 win=2 rps=100277 p50=0.296ms p99=0.777ms p999=1.618ms max=14.1ms errs=0 srvCores=13.09 srvUsPerReq=130.5
+RESULT label=exp1-raw run=1 conc=128 ch=8 win=1 rps=89714 p50=1.349ms p99=2.712ms p999=4.837ms max=14.3ms errs=0 srvCores=14.08 srvUsPerReq=157.0
+RESULT label=exp1-raw run=1 conc=128 ch=8 win=2 rps=87186 p50=1.393ms p99=2.699ms p999=3.520ms max=21.0ms errs=0 srvCores=14.39 srvUsPerReq=165.1
+RESULT label=exp1-spring-prod run=1 conc=1 ch=1 win=1 rps=20767 p50=0.046ms p99=0.076ms p999=0.249ms max=3.3ms errs=0 srvCores=0.80 srvUsPerReq=38.7
+RESULT label=exp1-spring-prod run=1 conc=1 ch=1 win=2 rps=20554 p50=0.046ms p99=0.088ms p999=0.257ms max=2.1ms errs=0 srvCores=0.77 srvUsPerReq=37.5
+RESULT label=exp1-spring-prod run=1 conc=8 ch=8 win=1 rps=62170 p50=0.124ms p99=0.192ms p999=0.721ms max=2.0ms errs=0 srvCores=6.81 srvUsPerReq=109.6
+RESULT label=exp1-spring-prod run=1 conc=8 ch=8 win=2 rps=62248 p50=0.124ms p99=0.191ms p999=0.693ms max=1.6ms errs=0 srvCores=6.82 srvUsPerReq=109.5
+RESULT label=exp1-spring-prod run=1 conc=32 ch=8 win=1 rps=101018 p50=0.292ms p99=0.808ms p999=1.644ms max=12.6ms errs=0 srvCores=13.26 srvUsPerReq=131.2
+RESULT label=exp1-spring-prod run=1 conc=32 ch=8 win=2 rps=100732 p50=0.294ms p99=0.767ms p999=1.608ms max=6.5ms errs=0 srvCores=13.40 srvUsPerReq=133.1
+RESULT label=exp1-spring-prod run=1 conc=128 ch=8 win=1 rps=82216 p50=1.475ms p99=2.875ms p999=3.839ms max=15.7ms errs=0 srvCores=14.84 srvUsPerReq=180.5
+RESULT label=exp1-spring-prod run=1 conc=128 ch=8 win=2 rps=81344 p50=1.484ms p99=2.939ms p999=4.502ms max=25.3ms errs=0 srvCores=14.78 srvUsPerReq=181.7
+RESULT label=exp1-raw run=2 conc=1 ch=1 win=1 rps=21596 p50=0.044ms p99=0.075ms p999=0.252ms max=1.6ms errs=0 srvCores=0.72 srvUsPerReq=33.3
+RESULT label=exp1-raw run=2 conc=1 ch=1 win=2 rps=21747 p50=0.044ms p99=0.065ms p999=0.236ms max=2.0ms errs=0 srvCores=0.72 srvUsPerReq=32.9
+RESULT label=exp1-raw run=2 conc=8 ch=8 win=1 rps=64338 p50=0.120ms p99=0.184ms p999=0.665ms max=1.2ms errs=0 srvCores=6.61 srvUsPerReq=102.8
+RESULT label=exp1-raw run=2 conc=8 ch=8 win=2 rps=63873 p50=0.121ms p99=0.192ms p999=0.686ms max=1.8ms errs=0 srvCores=6.58 srvUsPerReq=103.0
+RESULT label=exp1-raw run=2 conc=32 ch=8 win=1 rps=99989 p50=0.296ms p99=0.787ms p999=1.679ms max=13.1ms errs=0 srvCores=12.87 srvUsPerReq=128.8
+RESULT label=exp1-raw run=2 conc=32 ch=8 win=2 rps=100470 p50=0.296ms p99=0.752ms p999=1.618ms max=14.8ms errs=0 srvCores=13.18 srvUsPerReq=131.2
+RESULT label=exp1-raw run=2 conc=128 ch=8 win=1 rps=87052 p50=1.390ms p99=2.727ms p999=3.748ms max=60.1ms errs=0 srvCores=14.33 srvUsPerReq=164.6
+RESULT label=exp1-raw run=2 conc=128 ch=8 win=2 rps=83809 p50=1.446ms p99=2.804ms p999=3.869ms max=33.8ms errs=0 srvCores=14.46 srvUsPerReq=172.5
+RESULT label=exp1-spring-prod run=2 conc=1 ch=1 win=1 rps=20259 p50=0.046ms p99=0.085ms p999=0.281ms max=3.2ms errs=0 srvCores=0.81 srvUsPerReq=39.8
+RESULT label=exp1-spring-prod run=2 conc=1 ch=1 win=2 rps=20483 p50=0.046ms p99=0.089ms p999=0.264ms max=2.4ms errs=0 srvCores=0.76 srvUsPerReq=37.3
+RESULT label=exp1-spring-prod run=2 conc=8 ch=8 win=1 rps=61796 p50=0.125ms p99=0.198ms p999=0.711ms max=1.8ms errs=0 srvCores=6.82 srvUsPerReq=110.4
+RESULT label=exp1-spring-prod run=2 conc=8 ch=8 win=2 rps=61786 p50=0.125ms p99=0.192ms p999=0.707ms max=1.5ms errs=0 srvCores=6.84 srvUsPerReq=110.7
+RESULT label=exp1-spring-prod run=2 conc=32 ch=8 win=1 rps=99749 p50=0.295ms p99=0.812ms p999=1.656ms max=8.2ms errs=0 srvCores=13.26 srvUsPerReq=132.9
+RESULT label=exp1-spring-prod run=2 conc=32 ch=8 win=2 rps=99618 p50=0.294ms p99=0.840ms p999=1.782ms max=20.7ms errs=0 srvCores=13.15 srvUsPerReq=132.0
+RESULT label=exp1-spring-prod run=2 conc=128 ch=8 win=1 rps=86610 p50=1.396ms p99=2.793ms p999=4.109ms max=38.9ms errs=0 srvCores=14.71 srvUsPerReq=169.8
+RESULT label=exp1-spring-prod run=2 conc=128 ch=8 win=2 rps=83560 p50=1.442ms p99=2.942ms p999=4.456ms max=41.4ms errs=0 srvCores=14.80 srvUsPerReq=177.1
+
+### 实验 2：观测开关对比（并发 64，8 条连接；每个变体启动 3 次，交错进行）
+RESULT label=exp2-raw run=1 conc=64 ch=8 win=1 rps=96325 p50=0.622ms p99=1.455ms p999=2.260ms max=45.9ms errs=0 srvCores=13.05 srvUsPerReq=135.5
+RESULT label=exp2-raw run=1 conc=64 ch=8 win=2 rps=95645 p50=0.626ms p99=1.473ms p999=2.305ms max=30.4ms errs=0 srvCores=13.49 srvUsPerReq=141.0
+RESULT label=exp2-obs-off run=1 conc=64 ch=8 win=1 rps=94416 p50=0.635ms p99=1.466ms p999=2.352ms max=11.6ms errs=0 srvCores=14.05 srvUsPerReq=148.8
+RESULT label=exp2-obs-off run=1 conc=64 ch=8 win=2 rps=94498 p50=0.633ms p99=1.452ms p999=2.272ms max=74.7ms errs=0 srvCores=13.99 srvUsPerReq=148.0
+RESULT label=exp2-metrics-no-buckets run=1 conc=64 ch=8 win=1 rps=91127 p50=0.657ms p99=1.570ms p999=2.400ms max=46.4ms errs=0 srvCores=14.46 srvUsPerReq=158.7
+RESULT label=exp2-metrics-no-buckets run=1 conc=64 ch=8 win=2 rps=91158 p50=0.657ms p99=1.557ms p999=2.376ms max=48.0ms errs=0 srvCores=14.35 srvUsPerReq=157.4
+RESULT label=exp2-metrics-buckets run=1 conc=64 ch=8 win=1 rps=89766 p50=0.666ms p99=1.616ms p999=2.476ms max=27.6ms errs=0 srvCores=14.46 srvUsPerReq=161.1
+RESULT label=exp2-metrics-buckets run=1 conc=64 ch=8 win=2 rps=89937 p50=0.664ms p99=1.610ms p999=2.451ms max=100.7ms errs=0 srvCores=14.41 srvUsPerReq=160.2
+RESULT label=exp2-prod-sampling-0.1 run=1 conc=64 ch=8 win=1 rps=91212 p50=0.656ms p99=1.575ms p999=2.444ms max=18.8ms errs=0 srvCores=14.33 srvUsPerReq=157.1
+RESULT label=exp2-prod-sampling-0.1 run=1 conc=64 ch=8 win=2 rps=90922 p50=0.658ms p99=1.589ms p999=2.494ms max=13.3ms errs=0 srvCores=14.38 srvUsPerReq=158.1
+RESULT label=exp2-dev-sampling-1.0 run=1 conc=64 ch=8 win=1 rps=91033 p50=0.654ms p99=1.625ms p999=2.587ms max=48.1ms errs=0 srvCores=14.24 srvUsPerReq=156.4
+RESULT label=exp2-dev-sampling-1.0 run=1 conc=64 ch=8 win=2 rps=90824 p50=0.659ms p99=1.573ms p999=2.437ms max=39.7ms errs=0 srvCores=14.42 srvUsPerReq=158.7
+RESULT label=exp2-raw run=2 conc=64 ch=8 win=1 rps=95246 p50=0.628ms p99=1.482ms p999=2.329ms max=18.8ms errs=0 srvCores=13.80 srvUsPerReq=144.9
+RESULT label=exp2-raw run=2 conc=64 ch=8 win=2 rps=94876 p50=0.631ms p99=1.458ms p999=2.237ms max=18.1ms errs=0 srvCores=13.97 srvUsPerReq=147.3
+RESULT label=exp2-obs-off run=2 conc=64 ch=8 win=1 rps=94068 p50=0.635ms p99=1.508ms p999=2.387ms max=42.2ms errs=0 srvCores=13.85 srvUsPerReq=147.2
+RESULT label=exp2-obs-off run=2 conc=64 ch=8 win=2 rps=93739 p50=0.641ms p99=1.459ms p999=2.226ms max=16.8ms errs=0 srvCores=14.07 srvUsPerReq=150.1
+RESULT label=exp2-metrics-no-buckets run=2 conc=64 ch=8 win=1 rps=86830 p50=0.689ms p99=1.671ms p999=2.572ms max=43.8ms errs=0 srvCores=14.27 srvUsPerReq=164.3
+RESULT label=exp2-metrics-no-buckets run=2 conc=64 ch=8 win=2 rps=86852 p50=0.690ms p99=1.626ms p999=2.468ms max=55.1ms errs=0 srvCores=14.47 srvUsPerReq=166.6
+RESULT label=exp2-metrics-buckets run=2 conc=64 ch=8 win=1 rps=91291 p50=0.653ms p99=1.611ms p999=2.490ms max=17.4ms errs=0 srvCores=14.30 srvUsPerReq=156.7
+RESULT label=exp2-metrics-buckets run=2 conc=64 ch=8 win=2 rps=91302 p50=0.653ms p99=1.628ms p999=2.514ms max=27.1ms errs=0 srvCores=14.39 srvUsPerReq=157.6
+RESULT label=exp2-prod-sampling-0.1 run=2 conc=64 ch=8 win=1 rps=89912 p50=0.661ms p99=1.653ms p999=2.756ms max=81.0ms errs=0 srvCores=14.21 srvUsPerReq=158.1
+RESULT label=exp2-prod-sampling-0.1 run=2 conc=64 ch=8 win=2 rps=90083 p50=0.665ms p99=1.604ms p999=2.517ms max=34.0ms errs=0 srvCores=14.21 srvUsPerReq=157.7
+RESULT label=exp2-dev-sampling-1.0 run=2 conc=64 ch=8 win=1 rps=88695 p50=0.673ms p99=1.640ms p999=2.603ms max=43.4ms errs=0 srvCores=14.32 srvUsPerReq=161.5
+RESULT label=exp2-dev-sampling-1.0 run=2 conc=64 ch=8 win=2 rps=89172 p50=0.671ms p99=1.626ms p999=2.474ms max=21.9ms errs=0 srvCores=14.41 srvUsPerReq=161.6
+RESULT label=exp2-raw run=3 conc=64 ch=8 win=1 rps=94815 p50=0.629ms p99=1.492ms p999=2.375ms max=17.7ms errs=0 srvCores=13.90 srvUsPerReq=146.6
+RESULT label=exp2-raw run=3 conc=64 ch=8 win=2 rps=95007 p50=0.632ms p99=1.434ms p999=2.239ms max=18.4ms errs=0 srvCores=14.01 srvUsPerReq=147.5
+RESULT label=exp2-obs-off run=3 conc=64 ch=8 win=1 rps=93996 p50=0.637ms p99=1.493ms p999=2.333ms max=10.6ms errs=0 srvCores=13.94 srvUsPerReq=148.3
+RESULT label=exp2-obs-off run=3 conc=64 ch=8 win=2 rps=93982 p50=0.637ms p99=1.487ms p999=2.333ms max=13.6ms errs=0 srvCores=14.05 srvUsPerReq=149.5
+RESULT label=exp2-metrics-no-buckets run=3 conc=64 ch=8 win=1 rps=91466 p50=0.654ms p99=1.594ms p999=2.479ms max=39.0ms errs=0 srvCores=14.17 srvUsPerReq=155.0
+RESULT label=exp2-metrics-no-buckets run=3 conc=64 ch=8 win=2 rps=91114 p50=0.652ms p99=1.663ms p999=2.648ms max=34.5ms errs=0 srvCores=14.22 srvUsPerReq=156.1
+RESULT label=exp2-metrics-buckets run=3 conc=64 ch=8 win=1 rps=89007 p50=0.670ms p99=1.643ms p999=2.550ms max=19.6ms errs=0 srvCores=14.29 srvUsPerReq=160.6
+RESULT label=exp2-metrics-buckets run=3 conc=64 ch=8 win=2 rps=89486 p50=0.668ms p99=1.611ms p999=2.470ms max=85.5ms errs=0 srvCores=14.36 srvUsPerReq=160.4
+RESULT label=exp2-prod-sampling-0.1 run=3 conc=64 ch=8 win=1 rps=90705 p50=0.658ms p99=1.600ms p999=2.466ms max=35.5ms errs=0 srvCores=14.24 srvUsPerReq=157.0
+RESULT label=exp2-prod-sampling-0.1 run=3 conc=64 ch=8 win=2 rps=90972 p50=0.659ms p99=1.550ms p999=2.379ms max=21.7ms errs=0 srvCores=14.40 srvUsPerReq=158.3
+RESULT label=exp2-dev-sampling-1.0 run=3 conc=64 ch=8 win=1 rps=90453 p50=0.659ms p99=1.649ms p999=2.726ms max=19.8ms errs=0 srvCores=14.03 srvUsPerReq=155.1
+RESULT label=exp2-dev-sampling-1.0 run=3 conc=64 ch=8 win=2 rps=89983 p50=0.665ms p99=1.607ms p999=2.585ms max=19.3ms errs=0 srvCores=14.26 srvUsPerReq=158.5
+
+### 实验 3：连接数（spring-prod，并发 256）
+RESULT label=exp3-ch1 run=1 conc=256 ch=1 win=1 rps=86111 p50=2.681ms p99=4.949ms p999=5.747ms max=13.9ms errs=0 srvCores=3.39 srvUsPerReq=39.4
+RESULT label=exp3-ch1 run=1 conc=256 ch=1 win=2 rps=85978 p50=2.671ms p99=5.015ms p999=6.351ms max=8.1ms errs=0 srvCores=3.38 srvUsPerReq=39.4
+RESULT label=exp3-ch2 run=1 conc=256 ch=2 win=1 rps=98497 p50=2.512ms p99=3.905ms p999=4.717ms max=6.8ms errs=0 srvCores=6.00 srvUsPerReq=60.9
+RESULT label=exp3-ch2 run=1 conc=256 ch=2 win=2 rps=98150 p50=2.520ms p99=3.873ms p999=4.861ms max=7.7ms errs=0 srvCores=5.98 srvUsPerReq=61.0
+RESULT label=exp3-ch4 run=1 conc=256 ch=4 win=1 rps=83049 p50=2.995ms p99=4.620ms p999=5.771ms max=11.6ms errs=0 srvCores=9.57 srvUsPerReq=115.2
+RESULT label=exp3-ch4 run=1 conc=256 ch=4 win=2 rps=80835 p50=3.080ms p99=4.630ms p999=5.594ms max=8.0ms errs=0 srvCores=9.59 srvUsPerReq=118.6
+RESULT label=exp3-ch8 run=1 conc=256 ch=8 win=1 rps=69802 p50=3.530ms p99=6.026ms p999=10.582ms max=23.4ms errs=0 srvCores=14.95 srvUsPerReq=214.2
+RESULT label=exp3-ch8 run=1 conc=256 ch=8 win=2 rps=69416 p50=3.554ms p99=6.037ms p999=8.154ms max=47.1ms errs=0 srvCores=15.15 srvUsPerReq=218.2
+RESULT label=exp3-ch16 run=1 conc=256 ch=16 win=1 rps=66941 p50=2.520ms p99=19.965ms p999=116.087ms max=139.8ms errs=0 srvCores=15.85 srvUsPerReq=236.8
+RESULT label=exp3-ch16 run=1 conc=256 ch=16 win=2 rps=67224 p50=2.501ms p99=19.041ms p999=126.394ms max=133.0ms errs=0 srvCores=15.76 srvUsPerReq=234.5
+
+### 结束 2026-10-22 18:12:38，负载: 24.58 23.73 21.69

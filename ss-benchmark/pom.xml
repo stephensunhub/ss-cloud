@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>men.sbb8</groupId>
+        <artifactId>ss-cloud</artifactId>
+        <version>2026.10.21.0</version>
+    </parent>
+    <artifactId>ss-benchmark</artifactId>
+    <name>ss-benchmark</name>
+    <description>框架开销基准（不是系统容量测试）：用空处理器测 ss-grpc-server-starter 的开销，不参与默认构建，-Pbenchmark 启用</description>
+
+    <properties>
+        <!-- 内部工具，不发布 -->
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>men.sbb8</groupId>
+            <artifactId>ss-grpc-server-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -86,6 +86,16 @@
         </dependencies>
     </dependencyManagement>
 
+    <profiles>
+        <!-- 框架开销基准不参与默认构建：-Pbenchmark 才会加入（也包括 IDE 导入、versions:set 时），用法见 ss-benchmark/README.md -->
+        <profile>
+            <id>benchmark</id>
+            <modules>
+                <module>ss-benchmark</module>
+            </modules>
+        </profile>
+    </profiles>
+
     <build>
         <pluginManagement>
             <plugins>

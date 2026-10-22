@@ -12,6 +12,7 @@
 | [`ss-grpc-server-starter`](ss-grpc-server-starter/README.md) | **gRPC 服务端**：异常转换、健康检查（存活 / 就绪）、端口默认值 | [README](ss-grpc-server-starter/README.md) |
 | [`ss-grpc-client-starter`](ss-grpc-client-starter/README.md) | **gRPC 客户端**：失败还原为带业务码的异常、默认超时 | [README](ss-grpc-client-starter/README.md) |
 | [`ss-grpc-core`](ss-grpc-core/README.md) | gRPC 服务端、客户端共用：错误模型、指标抓取、链路追踪与监控默认配置。**一般不直接引入** | [README](ss-grpc-core/README.md) |
+| [`ss-benchmark`](ss-benchmark/README.md) | **框架开销基准**（不是容量测试）：不参与默认构建，`-Pbenchmark` 才启用；有[基线数字](ss-benchmark/BASELINE.md) | [README](ss-benchmark/README.md) |
 
 怎么选：
 
@@ -72,10 +73,10 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 首次构建需要联网：gRPC 模块用 `protobuf-maven-plugin` 从 Maven 仓库下载 `protoc`，不要求本机安装。
 原生镜像需要 GraalVM 25（Oracle GraalVM 25.0.4 已验证）。
 
-升版本号时用 Maven 的 versions 插件一次改全部模块，不要手工逐个 pom 改：
+升版本号时用 Maven 的 versions 插件一次改全部模块，不要手工逐个 pom 改（带 `-Pbenchmark` 才会包含基准模块）：
 
 ```bash
-./mvnw versions:set -DnewVersion=2026.11.1.0 -DgenerateBackupPoms=false
+./mvnw versions:set -Pbenchmark -DnewVersion=2026.11.1.0 -DgenerateBackupPoms=false
 ```
 
 ## 已定的设计决策
