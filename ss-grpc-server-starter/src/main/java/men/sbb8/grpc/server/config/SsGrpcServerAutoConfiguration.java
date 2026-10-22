@@ -13,7 +13,13 @@ import org.springframework.boot.grpc.server.health.GrpcServerHealth;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.grpc.server.GlobalServerInterceptor;
+import org.springframework.grpc.server.exception.CompositeGrpcExceptionHandler;
 import org.springframework.grpc.server.exception.GrpcExceptionHandler;
+import org.springframework.grpc.server.exception.GrpcExceptionHandlerInterceptor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * gRPC 服务端自动配置，所有 Bean 均可被应用同类型 Bean 覆盖。
@@ -21,9 +27,10 @@ import org.springframework.grpc.server.exception.GrpcExceptionHandler;
  *
  * @author Stephen
  */
-// 排在可用性自动配置之后：HealthUpdateListener 要在 ApplicationAvailabilityBean 更新完状态之后再同步，
+// before GrpcServerAutoConfiguration：我们提供的异常拦截器要先注册，Boot 自己的那个（@ConditionalOnMissingBean）才会让位
+// afterName 可用性自动配置：HealthUpdateListener 要在 ApplicationAvailabilityBean 更新完状态之后再同步，
 // 同顺序的监听器按 Bean 注册先后执行
-@AutoConfiguration(after = GrpcServerAutoConfiguration.class,
+@AutoConfiguration(before = GrpcServerAutoConfiguration.class,
         afterName = "org.springframework.boot.autoconfigure.availability.ApplicationAvailabilityAutoConfiguration")
 @ConditionalOnClass(GrpcExceptionHandler.class)
 public class SsGrpcServerAutoConfiguration {
@@ -40,6 +47,50 @@ public class SsGrpcServerAutoConfiguration {
     @ConditionalOnMissingBean
     FallbackExceptionHandler ssFallbackExceptionHandler() {
         return new FallbackExceptionHandler();
+    }
+
+    /**
+     * 异常拦截器的顺序：紧贴观测拦截器（{@code @Order(0)}）的内侧。
+     * <p>Boot 默认把异常拦截器放在最外层，异常是在观测范围之外被处理的，于是：服务端指标 / span 看不到失败调用的真实状态
+     * （业务异常、未知异常都记成 UNKNOWN），异常处理时打的日志也没有追踪号。放进观测范围内就都正常了。
+     * <p>取 1 而不是更靠后，是为了让顺序更靠后的拦截器（如 Spring Security 的认证拦截器）仍在它的内侧，
+     * 它们抛出的异常照样会被这里的处理器接住。
+     */
+    static final int EXCEPTION_INTERCEPTOR_ORDER = 1;
+
+    @Bean
+    @Order(EXCEPTION_INTERCEPTOR_ORDER)
+    @GlobalServerInterceptor
+    @ConditionalOnMissingBean
+    GrpcExceptionHandlerInterceptor ssGrpcExceptionHandlerInterceptor(ObjectProvider<GrpcExceptionHandler> handlers) {
+        return new GrpcExceptionHandlerInterceptor(new CompositeGrpcExceptionHandler(
+                inPrecedenceOrder(handlers.orderedStream().toList()).toArray(GrpcExceptionHandler[]::new)));
+    }
+
+    /**
+     * 处理器的先后：应用自己的（{@code @GrpcAdvice} 等）→ 业务异常处理 → 兜底。
+     * 兜底对任何异常都返回结果，必须排在最后；这里显式保证，不依赖 Bean 的注册先后（顺序值相同时按注册先后）。
+     */
+    static List<GrpcExceptionHandler> inPrecedenceOrder(List<GrpcExceptionHandler> handlers) {
+        List<GrpcExceptionHandler> result = new ArrayList<>();
+        GrpcExceptionHandler business = null;
+        GrpcExceptionHandler fallback = null;
+        for (GrpcExceptionHandler handler : handlers) {
+            if (handler instanceof FallbackExceptionHandler) {
+                fallback = handler;
+            } else if (handler instanceof BusinessExceptionHandler) {
+                business = handler;
+            } else {
+                result.add(handler);
+            }
+        }
+        if (business != null) {
+            result.add(business);
+        }
+        if (fallback != null) {
+            result.add(fallback);
+        }
+        return result;
     }
 
     /**

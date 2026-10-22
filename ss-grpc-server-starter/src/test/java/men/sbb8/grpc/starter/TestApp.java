@@ -84,6 +84,7 @@ class TestApp {
                             .setMessage(tracer.currentSpan().context().traceId()).build());
                     responseObserver.onCompleted();
                 }
+                case "advice" -> throw new UnsupportedOperationException("not supported here");
                 case "boom" -> throw new IllegalStateException("secret internal detail");
                 case "status" -> throw Status.NOT_FOUND.withDescription("raw").asRuntimeException();
                 case "downstream-business" -> throw remote(ErrorDetails.toStatusRuntimeException(

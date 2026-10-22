@@ -40,7 +40,17 @@ readinessProbe:
 - 未知异常统一为 `INTERNAL` + `SYSTEM_ERROR`，不暴露细节
 - 直接抛出的 `StatusRuntimeException`：带 `ErrorDetail` 或属于调用方错误类（参数、不存在、权限等）的原样返回，
   其余丢弃描述换成通用错误
-- 应用自己的 `@GrpcAdvice` 优先于 starter 的处理器
+- 处理器的先后：应用自己的（`@GrpcAdvice` 等）→ 业务异常处理 → 兜底，前面的先处理
+- 应用写 `@GrpcAdvice` 时，**类和方法都必须是 `public`**，否则 Spring gRPC 反射调用失败，会被悄悄吞成通用的 `INTERNAL`
+
+## 失败调用的可观测性
+
+异常拦截器放在观测拦截器的紧邻内侧（顺序 1）。Boot 默认把它放在最外层，会导致服务端指标把失败调用都记成 `UNKNOWN`
+（客户端看到的却是真实状态），异常处理时打的日志也没有追踪号。现在服务端指标里是真实的 gRPC 状态
+（`grpc.server` 的 `grpc.status_code` 标签），异常日志带追踪号。
+
+顺序更靠后的拦截器（如 Spring Security 的认证拦截器）仍在它的内侧，它们抛出的异常照样会被这里的处理器接住（按顺序推断，未用 Spring Security 实测）。
+如果应用自己加了顺序小于 1 的拦截器，它抛出的异常不会经过这里的处理器。
 
 ## 生产环境默认值
 
