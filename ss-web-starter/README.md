@@ -107,7 +107,7 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
   `http://wallet` 这样的写法**不会**被当成服务名；普通地址的分组不受影响。
   已用真实的 Spring Cloud LoadBalancer 测试（两个实例轮询、没有实例返回 502、普通地址不受影响），
   并在 Boot 4.1.1 + Spring Cloud 2025.1.3（spring-cloud-consul 5.0.3）+ Consul 1.20.6 上用真实的 `DiscoveryClient` 和 TTL 健康检查
-  验证了轮询、无实例和实例宕机 / 恢复（JVM 模式）。注意官方 2025.1 列车对应的是 Boot 4.0.x，目前没有正式对应 Boot 4.1 的列车。
+  验证了轮询、无实例和实例宕机 / 恢复（JVM 模式）。注意官方 2025.1 列车对应的是 Boot 4.0.x，目前没有基于 Boot 4.1 构建的列车，但 2025.1.3 的版本校验接受 4.1.x；升级到 Boot 4.2 时要同步升级列车。
   原生镜像下的要求见"原生镜像"一节
 - **实例宕机后的失败窗口由 LoadBalancer 的实例缓存决定**：默认缓存 35 秒（`spring.cloud.loadbalancer.cache.ttl`），
   实例宕机后，Consul 在健康检查失败时（实测 6 秒）就不再返回它，但缓存没过期前调用方仍会选中它，且**没有重试**。

@@ -15,6 +15,7 @@ import men.sbb8.grpc.server.test.HelloRequest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.MDC;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -65,7 +66,13 @@ class MetadataSizeLimitTest {
         server = NettyServerBuilder.forPort(0).addService(new GreeterGrpc.GreeterImplBase() {
             @Override
             public void hello(HelloRequest request, StreamObserver<HelloReply> out) {
-                out.onError(ErrorDetails.toStatusRuntimeException(WorstCase.INSTANCE, params));
+                // 开启追踪时详情里还有 32 位的 traceId，同样算进最坏情况
+                MDC.put("traceId", "0123456789abcdef0123456789abcdef");
+                try {
+                    out.onError(ErrorDetails.toStatusRuntimeException(WorstCase.INSTANCE, params));
+                } finally {
+                    MDC.remove("traceId");
+                }
             }
         }).build().start();
         // 客户端不做任何额外配置：就是 grpc-java 的默认 metadata 上限（8192）

@@ -29,7 +29,9 @@
         <java.version>25</java.version>
 
         <!-- Spring Cloud 列车。官方 Supported Versions：2025.1（Oakwood）对应 Spring Boot 4.0.x，其 BOM 全部基于 4.0.x 构建；
-             下一条列车 2026.0 对应 Boot 4.2。目前没有正式对应 Boot 4.1 的列车，本项目是 Boot 4.1.1。
+             下一条列车 2026.0 对应 Boot 4.2。目前没有基于 Boot 4.1 构建的列车，本项目是 Boot 4.1.1；
+             但 2025.1.3 的 spring-cloud-commons 5.0.3 启动时的版本校验（CompatibilityVerifier）接受 4.0.x 和 4.1.x，
+             2026.0.0-M1 只接受 4.2.x（Boot 4.1.1 上直接启动失败），所以升级 Boot 到 4.2 时要同步升级列车。
              本仓库的 starter 不依赖 Spring Cloud（只有 ss-web-starter 的测试用到 spring-cloud-starter-loadbalancer），
              这个版本供继承本 POM 的应用引入 Spring Cloud 组件时使用。已在 Boot 4.1.1 上实测 Spring Cloud LoadBalancer
              和 Spring Cloud Consul 5.0.3 的 JVM 模式可用；引入其他组件前先实测兼容性，或让 Boot 与列车对齐 -->

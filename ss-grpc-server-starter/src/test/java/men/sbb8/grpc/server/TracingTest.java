@@ -1,8 +1,10 @@
 package men.sbb8.grpc.server;
 
 import com.sun.net.httpserver.HttpServer;
+import io.grpc.StatusRuntimeException;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
+import men.sbb8.grpc.core.error.ErrorDetails;
 import men.sbb8.grpc.server.test.GreeterGrpc;
 import men.sbb8.grpc.server.test.HelloRequest;
 import org.junit.jupiter.api.AfterAll;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -73,6 +76,21 @@ class TracingTest {
         }
         assertTrue(serverTraceId.matches("[0-9a-f]{32}"), serverTraceId);
         assertEquals(span.context().traceId(), serverTraceId);
+    }
+
+    @Test
+    void errorDetailCarriesTheTraceIdOfTheFailedCall() {
+        // 业务异常、未知异常、被对外隐藏的内部错误，三条路径返回的详情里都带同一个 traceId
+        for (String name : List.of("business", "boom", "leak-internal")) {
+            Span span = tracer.nextSpan().name("client-operation").start();
+            try (Tracer.SpanInScope ignored = tracer.withSpan(span)) {
+                StatusRuntimeException e = assertThrows(StatusRuntimeException.class,
+                        () -> stub.hello(HelloRequest.newBuilder().setName(name).build()));
+                assertEquals(span.context().traceId(), ErrorDetails.find(e).orElseThrow().getTraceId(), name);
+            } finally {
+                span.end();
+            }
+        }
     }
 
     @Test

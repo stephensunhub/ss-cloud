@@ -84,7 +84,7 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 - 不使用 Spring Cloud Alibaba；暂不引入配置中心。服务发现：gRPC 在 k8s 里先用 headless Service（`dns:///`），
   等 Spring gRPC / Spring Cloud 出官方方案，不自己造服务发现的轮子；HTTP 按服务名调用用 Spring Cloud 官方的 `lb://服务名`
 - 项目依赖 Consul，用到 Spring Cloud 组件时要注意：Spring Cloud BOM 已在父 POM 里导入，但官方的 2025.1 列车对应 Boot 4.0.x，
-  暂无正式对应 Boot 4.1 的列车（下一条 2026.0 对应 Boot 4.2）。已实测 Spring Cloud LoadBalancer 和 Spring Cloud Consul 5.0.3
+  暂无基于 Boot 4.1 构建的列车（下一条 2026.0 对应 Boot 4.2，在 Boot 4.1.1 上启动会被它的版本校验拒绝）；2025.1.3 自带的版本校验接受 4.0.x 和 4.1.x。升级 Boot 到 4.2 时要同步升级列车。已实测 Spring Cloud LoadBalancer 和 Spring Cloud Consul 5.0.3
   在 Boot 4.1.1 的 JVM 模式下可用；其他组件引入前需先实测兼容性，或让 Boot 与列车对齐
 - HTTP 客户端用 `@HttpExchange` + `RestClient`，不用 Feign、不用手写 HTTP 客户端
 - Web 相关的封装（Jackson、Redis 序列化、JSON 持久化转换等）都在 `ss-web-starter`，gRPC 走 protobuf，不带 Jackson

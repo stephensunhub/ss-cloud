@@ -78,7 +78,7 @@ management:
 
 - 采样率：默认 `1.0`（开发、测试全量），激活 `prod` / `production` 时默认 `0.1`，用 `management.tracing.sampling.probability` 调整
 - 调用链会通过 gRPC metadata（W3C traceparent） 自动延续到下游，下游的 span 与上游在同一个 trace 里
-- 日志里自动带 traceId / spanId；gRPC 错误详情里不带 traceId，排查时用日志里的 traceId
+- 日志里自动带 traceId / spanId；失败调用返回的 `ErrorDetail.trace_id` 是服务端处理这次调用的 traceId（没开启追踪时为空），调用方报错时带上它即可在服务端日志里定位
 - 注意是头部采样：未被采样的请求也会有 traceId，但在 Jaeger 里查不到。需要"出错必留"请在 Collector 里做尾部采样
 
 

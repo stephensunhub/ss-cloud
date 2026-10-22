@@ -5,6 +5,7 @@ import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
 import io.grpc.protobuf.ProtoUtils;
 import men.sbb8.grpc.core.proto.ErrorDetail;
+import org.slf4j.MDC;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -51,11 +52,16 @@ public final class ErrorDetails {
 
     public static ErrorDetail toDetail(BusinessCode code, Map<String, ?> params) {
         Map<String, String> bounded = bound(params);
-        return ErrorDetail.newBuilder()
+        ErrorDetail.Builder detail = ErrorDetail.newBuilder()
                 .setCode(code.code())
                 .setMsg(render(code.msg(), bounded))
-                .putAllParams(bounded)
-                .build();
+                .putAllParams(bounded);
+        // Micrometer Tracing 桥接会把 traceId 写入 MDC，避免对追踪实现的硬依赖
+        String traceId = MDC.get("traceId");
+        if (traceId != null) {
+            detail.setTraceId(traceId);
+        }
+        return detail.build();
     }
 
     /**

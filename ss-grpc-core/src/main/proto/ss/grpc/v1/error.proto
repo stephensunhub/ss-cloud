@@ -15,4 +15,6 @@ message ErrorDetail {
   string msg = 2;
   // 渲染消息用到的参数
   map<string, string> params = 3;
+  // 服务端处理这次调用时的 traceId，调用方报错时带上它即可在日志里定位；没有开启追踪时为空
+  string trace_id = 4;
 }
