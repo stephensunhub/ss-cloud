@@ -3,6 +3,7 @@ package men.sbb8.grpc.client.discovery;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.NameResolverProvider;
 import men.sbb8.grpc.client.config.SsGrpcClientProperties;
+import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -26,6 +27,14 @@ import org.springframework.grpc.client.GrpcChannelBuilderCustomizer;
 @ConditionalOnProperty(prefix = "ss.grpc.client.discovery", name = "enabled", matchIfMissing = true)
 @EnableConfigurationProperties(SsGrpcClientProperties.class)
 public class SsGrpcDiscoveryAutoConfiguration {
+
+    /**
+     * 前置条件不满足时启动失败，并说明原因
+     */
+    @Bean
+    static InitializingBean ssDiscoveryRequirementsCheck() {
+        return () -> DiscoveryRequirements.verify(SsGrpcDiscoveryAutoConfiguration.class.getClassLoader());
+    }
 
     @Bean(destroyMethod = "deregister")
     @ConditionalOnMissingBean
