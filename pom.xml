@@ -19,7 +19,6 @@
     <description>ss-cloud 顶层 POM：统一管理 Java、Spring Boot、Spring Cloud 及第三方依赖版本</description>
 
     <modules>
-        <module>ss-common</module>
         <module>ss-web-starter</module>
         <module>ss-grpc-core</module>
         <module>ss-grpc-server-starter</module>
@@ -48,11 +47,6 @@
             </dependency>
 
             <!-- 内部模块 -->
-            <dependency>
-                <groupId>men.sbb8</groupId>
-                <artifactId>ss-common</artifactId>
-                <version>${project.version}</version>
-            </dependency>
             <dependency>
                 <groupId>men.sbb8</groupId>
                 <artifactId>ss-web-starter</artifactId>
