@@ -2,6 +2,7 @@ package men.sbb8.grpc.core;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import men.sbb8.grpc.core.error.BusinessCode;
 import men.sbb8.grpc.core.error.CommonCode;
 import men.sbb8.grpc.core.error.ErrorDetails;
 import men.sbb8.grpc.core.error.GrpcBusinessException;
@@ -53,5 +54,43 @@ class ErrorDetailsTest {
         assertNull(plain.getCode());
         assertNull(plain.getRemoteMsg());
         assertTrue(plain.getMessage().contains("UNAVAILABLE"));
+    }
+
+    @Test
+    void oversizedParamsAreBounded() {
+        String huge = "x".repeat(10_000);
+        ErrorDetail detail = ErrorDetails.toDetail(CommonCode.PARAMS_ERROR, Map.of("field", huge));
+        String value = detail.getParamsMap().get("field");
+        assertEquals(ErrorDetails.MAX_PARAM_LENGTH, value.length());
+        assertTrue(value.endsWith("…"));
+
+        Map<String, Object> many = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < 100; i++) {
+            many.put("k" + i, i);
+        }
+        assertEquals(ErrorDetails.MAX_PARAMS, ErrorDetails.toDetail(CommonCode.PARAMS_ERROR, many).getParamsCount());
+        // 整个详情放进 trailers 后远小于客户端默认的 8KB metadata 上限
+        assertTrue(ErrorDetails.toDetail(CommonCode.PARAMS_ERROR, many).getSerializedSize() < 8192);
+    }
+
+    @Test
+    void renderedMessageUsesBoundedParams() {
+        BusinessCode template = new BusinessCode() {
+            public io.grpc.Status status() { return Status.INVALID_ARGUMENT; }
+            public String code() { return "T"; }
+            public String msg() { return "bad {{v}}"; }
+        };
+        String message = new GrpcBusinessException(template, Map.of("v", "y".repeat(5000))).getMessage();
+        assertEquals("bad ".length() + ErrorDetails.MAX_PARAM_LENGTH, message.length());
+    }
+
+    @Test
+    void exceptionKeepsItsOwnCopyOfParams() {
+        Map<String, Object> params = new java.util.HashMap<>();
+        params.put("a", 1);
+        GrpcBusinessException e = new GrpcBusinessException(CommonCode.PARAMS_ERROR, params);
+        params.put("b", 2);
+        assertEquals(Map.of("a", 1), e.getParams());
+        org.junit.jupiter.api.Assertions.assertThrows(UnsupportedOperationException.class, () -> e.getParams().clear());
     }
 }

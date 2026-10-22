@@ -39,6 +39,12 @@ public class PrometheusScrapeServer implements SmartLifecycle {
      * @param registrySupplier 启动时才取注册表，取不到（没有 Prometheus 注册表）就不启动抓取服务
      */
     public PrometheusScrapeServer(Supplier<PrometheusMeterRegistry> registrySupplier, int port, String path) {
+        if (port < 0 || port > 65535) {
+            throw new IllegalArgumentException("ss.grpc.metrics.prometheus.port 必须在 0–65535 之间，实际: " + port);
+        }
+        if (path == null || !path.startsWith("/")) {
+            throw new IllegalArgumentException("ss.grpc.metrics.prometheus.path 必须以 / 开头，实际: " + path);
+        }
         this.registrySupplier = registrySupplier;
         this.configuredPort = port;
         this.path = path;

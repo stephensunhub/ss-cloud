@@ -46,8 +46,8 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
 | 配置 | 默认值 | 说明 |
 |---|---|---|
 | `ss.grpc.metrics.prometheus.enabled` | `true` | 设为 `false` 不监听任何 HTTP 端口 |
-| `ss.grpc.metrics.prometheus.port` | `9091` | 端口被占用时启动会失败并给出提示；`0` 为随机端口 |
-| `ss.grpc.metrics.prometheus.path` | `/metrics` | 抓取路径 |
+| `ss.grpc.metrics.prometheus.port` | `9091` | 0–65535，超出范围启动失败；端口被占用时也会失败并给出提示；`0` 为随机端口 |
+| `ss.grpc.metrics.prometheus.path` | `/metrics` | 抓取路径，必须以 `/` 开头，否则启动失败 |
 
 **与 `ss-web-starter` 在 prod 下的抓取地址一致**（都是 `:9091/metrics`，指标都带 `application` 标签、耗时都有直方图），
 Prometheus 对所有服务可以用同一份抓取配置。
@@ -82,7 +82,7 @@ management:
 ## 错误模型
 
 - 服务端（`ss-grpc-server-starter`）抛 `GrpcBusinessException(业务码, 参数)`，转成该业务码对应的 gRPC 状态，
-  错误详情 `ErrorDetail`（code / msg / params）放在 trailers 里。参数会原样发给调用方，不要放敏感值
+  错误详情 `ErrorDetail`（code / msg / params）放在 trailers 里。参数会发给调用方，不要放敏感值；为不超出客户端默认 8KB 的 metadata 上限，参数最多 20 个、每个值最多 256 个字符（超出截断，以 `…` 结尾）
 - 未知异常统一为 `INTERNAL` + `SYSTEM_ERROR`，不暴露细节；直接抛出的 `StatusRuntimeException`，
   调用方错误类（参数、不存在、权限等）原样返回，其余丢弃描述换成通用错误
 - 客户端（`ss-grpc-client-starter`）用 `GrpcCalls.call(() -> stub.xxx(req))` 把失败还原为 `GrpcRemoteException`（带业务码）
