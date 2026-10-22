@@ -17,7 +17,8 @@ import java.util.Map;
 /**
  * 以最低优先级加载 starter 的默认配置（META-INF/ss-web-defaults.yaml），
  * 应用自己的 application.yaml、环境变量、命令行都可以覆盖。
- * 激活 prod / production 环境时，另外默认关闭 springdoc 的接口文档和 Swagger UI
+ * 激活 prod / production 环境时，另外默认：关闭 springdoc 接口文档和 Swagger UI，
+ * actuator 监控端点使用独立端口 8081（不与业务接口同端口暴露），控制台日志使用 ECS 结构化 JSON
  *
  * @author Stephen
  */
@@ -37,10 +38,13 @@ public class SsWebEnvironmentPostProcessor implements EnvironmentPostProcessor {
             throw new IllegalStateException("无法加载 " + DEFAULTS, e);
         }
         if (environment.acceptsProfiles(Profiles.of("prod", "production"))) {
-            // 生产环境默认不暴露接口文档；需要时在应用配置里把 springdoc.*.enabled 设回 true
+            // 生产环境默认：不暴露接口文档、监控端点独立端口、日志输出结构化 JSON。
+            // 需要时在应用配置里覆盖对应属性
             environment.getPropertySources().addLast(new MapPropertySource("ss-web-prod-defaults", Map.of(
                     "springdoc.api-docs.enabled", false,
-                    "springdoc.swagger-ui.enabled", false)));
+                    "springdoc.swagger-ui.enabled", false,
+                    "management.server.port", 8081,
+                    "logging.structured.format.console", "ecs")));
         }
     }
 }

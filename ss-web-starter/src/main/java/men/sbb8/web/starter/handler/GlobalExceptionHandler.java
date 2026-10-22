@@ -28,6 +28,7 @@ import java.util.Objects;
 /**
  * 全局异常处理，统一输出 {@link Resp}。
  * 业务异常使用其自带 HTTP 状态码（默认 200），参数错误 400，未知异常 500 且不向前端暴露异常详情。
+ * 错误与成功共用 {@code Resp} 信封，客户端只需一种解析方式；未采用 RFC 9457 ProblemDetail。
  * 优先级最低：应用自己的 {@code @RestControllerAdvice} 能先于它处理异常，从而覆盖这里的约定。
  *
  * @author Stephen

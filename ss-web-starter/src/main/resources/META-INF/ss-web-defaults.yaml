@@ -1,9 +1,13 @@
 # ss-web-starter 默认配置（最低优先级，应用配置可覆盖）
+# 与 Spring Boot 默认值相同的项（graceful 停机、健康探针、springdoc 路径）不重复配置
 server:
-  shutdown: graceful
   # 容器只信任内网代理的 X-Forwarded-*，据此还原真实客户端地址（见 WebUtils#getRemoteIp）
   forward-headers-strategy: native
 spring:
+  threads:
+    virtual:
+      # JDK 21+ 的 Servlet 应用推荐使用虚拟线程；个别服务（如低延迟场景）可设为 false 关闭
+      enabled: true
   lifecycle:
     timeout-per-shutdown-phase: 30s
   http:
@@ -26,11 +30,4 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus,metrics
-  endpoint:
-    health:
-      probes:
-        enabled: true
-springdoc:
-  api-docs:
-    path: /v3/api-docs
+        include: health,info,prometheus

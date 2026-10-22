@@ -7,7 +7,7 @@ import lombok.experimental.Accessors;
 import java.util.List;
 
 /**
- * @author Stephe
+ * @author Stephen
  */
 @Setter
 @Getter

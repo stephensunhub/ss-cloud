@@ -1,15 +1,21 @@
 package men.sbb8.web.starter.redis;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
+import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
@@ -52,14 +58,14 @@ public class SsRedisAutoConfiguration {
                         .allowIfSubTypeIsArray()
                         .build())
                 .customize(builder -> builder.changeDefaultPropertyInclusion(
-                        incl -> incl.withContentInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)))
+                        incl -> incl.withContentInclusion(JsonInclude.Include.ALWAYS)))
                 .build();
     }
 
     @Bean
     @ConditionalOnMissingBean(name = "redisTemplate")
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory,
-                                                       RedisSerializer<Object> ssRedisJsonSerializer) {
+                                                       @Qualifier("ssRedisJsonSerializer") RedisSerializer<Object> ssRedisJsonSerializer) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         StringRedisSerializer keySerializer = new StringRedisSerializer();
@@ -68,5 +74,21 @@ public class SsRedisAutoConfiguration {
         template.setValueSerializer(ssRedisJsonSerializer);
         template.setHashValueSerializer(ssRedisJsonSerializer);
         return template;
+    }
+
+    /**
+     * Spring Cache（@Cacheable）的 Redis 缓存值同样用 JSON，不落回默认的 JDK 序列化。
+     * 只替换值序列化，Boot 的 spring.cache.redis.*（过期时间、key 前缀等）照常生效。
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass({RedisCacheManager.class, RedisCacheManagerBuilderCustomizer.class})
+    static class RedisCacheConfiguration {
+
+        @Bean
+        RedisCacheManagerBuilderCustomizer ssRedisCacheValueSerializer(
+                @Qualifier("ssRedisJsonSerializer") RedisSerializer<Object> ssRedisJsonSerializer) {
+            return builder -> builder.cacheDefaults(builder.cacheDefaults().serializeValuesWith(
+                    RedisSerializationContext.SerializationPair.fromSerializer(ssRedisJsonSerializer)));
+        }
     }
 }

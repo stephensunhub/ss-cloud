@@ -27,9 +27,15 @@ class SsWebStarterTest {
 
     @Test
     void defaultsApplied() {
-        assertEquals("graceful", env.getProperty("server.shutdown"));
+        assertEquals("30s", env.getProperty("spring.lifecycle.timeout-per-shutdown-phase"));
+        assertEquals("true", env.getProperty("spring.threads.virtual.enabled"));
         assertEquals("non_null", env.getProperty("spring.jackson.default-property-inclusion"));
         assertEquals("3s", env.getProperty("spring.http.clients.connect-timeout"));
+    }
+
+    @Test
+    void respCarriesTraceId() throws Exception {
+        mvc.perform(get("/obj")).andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     @Autowired
@@ -66,7 +72,7 @@ class SsWebStarterTest {
                 .andExpect(jsonPath("$.data.n").value(1))
                 .andExpect(jsonPath("$.data.time").value("2026-01-02T03:04:05"))
                 .andExpect(jsonPath("$.success").doesNotExist())
-                .andExpect(jsonPath("$.traceId").doesNotExist());
+                .andExpect(jsonPath("$.traceId").isNotEmpty());
     }
 
     @Test
