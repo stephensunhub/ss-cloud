@@ -105,9 +105,17 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
   本 starter 在此之上只做一件事：没有可用实例时（Spring Cloud 抛的是普通的 `IllegalStateException`）统一返回 502，
   和"下游连不上"一致，而不是被当成未知异常变成 500。只有 `lb://` 开头的地址才走负载均衡，
   `http://wallet` 这样的写法**不会**被当成服务名；普通地址的分组不受影响。
-  已用真实的 Spring Cloud LoadBalancer 加静态实例列表测试（两个实例轮询、没有实例返回 502、普通地址不受影响）；
-  Consul 的 `DiscoveryClient` 在 Boot 4.1.1 + Spring Cloud 2025.1.3（spring-cloud-consul 5.0.3）的 JVM 模式下另有实测。
-  注意官方 2025.1 列车对应的是 Boot 4.0.x，目前没有正式对应 Boot 4.1 的列车。原生镜像下的要求见"原生镜像"一节
+  已用真实的 Spring Cloud LoadBalancer 测试（两个实例轮询、没有实例返回 502、普通地址不受影响），
+  并在 Boot 4.1.1 + Spring Cloud 2025.1.3（spring-cloud-consul 5.0.3）+ Consul 1.20.6 上用真实的 `DiscoveryClient` 和 TTL 健康检查
+  验证了轮询、无实例和实例宕机 / 恢复（JVM 模式）。注意官方 2025.1 列车对应的是 Boot 4.0.x，目前没有正式对应 Boot 4.1 的列车。
+  原生镜像下的要求见"原生镜像"一节
+- **实例宕机后的失败窗口由 LoadBalancer 的实例缓存决定**：默认缓存 35 秒（`spring.cloud.loadbalancer.cache.ttl`），
+  实例宕机后，Consul 在健康检查失败时（实测 6 秒）就不再返回它，但缓存没过期前调用方仍会选中它，且**没有重试**。
+  实测（两个实例，其中一个宕机，每 0.5 秒调用一次）：默认值下约一半的请求失败持续了约 35 秒；
+  设成 `5s` 后失败只持续到 9 秒（Consul 判定的 6 秒 + 最多 5 秒的缓存），实例恢复后 1 秒内就被重新选中。
+  缓存越短，有请求时向 Consul 查询得越频繁：每个服务每个缓存周期至少一次，缓存到期的瞬间如果有并发请求，
+  它们会各查一次（早先实测过：5 个并发发出了 5 次查询，没有合并）。Consul 的实际请求量在 5 秒缓存下没有测过。
+  按服务对故障的容忍度调整；这个值没有在本 starter 里改默认，由应用决定
 - 这些处理只作用于 `@HttpExchange` 客户端，不影响应用自己创建的 `RestClient`
 - 用户头只在请求线程内才能透传；链路追踪的上下文会自动延续到下游
 
