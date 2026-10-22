@@ -14,6 +14,9 @@ Prometheus 抓取端口、链路追踪与监控指标的默认配置。
 另已验证：只引入 `ss-grpc-client-starter` 的原生镜像（启动 0.014 秒）调用原生服务端，链路传递和 OTLP 导出正常
 （同一个 traceId 同时出现在客户端和服务端导出的数据里）。
 
+prod 档案编译出的镜像里，gRPC 反射服务已关闭（用 `grpcurl` 实测：`list` 返回 "server does not support the reflection API"，
+而普通编译的镜像能列出所有服务；健康检查等其他功能不受影响）。要关闭反射，必须在**编译时**激活 prod，见下文。
+
 starter 已内置所需提示：默认配置文件，以及 grpc-java 通过反射使用的 `LongAdder`（Boot / Spring gRPC 没有注册它，
 缺了会在 gRPC 服务端 / 客户端启动时失败）。应用自己的 protobuf 消息和 gRPC 服务由 Spring gRPC 的 AOT 处理注册。
 

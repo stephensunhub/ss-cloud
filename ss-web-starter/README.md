@@ -171,6 +171,10 @@ OpenAPI、Prometheus 指标、链路追踪，结果与 JVM 模式一致。示例
 另已在 prod 配置的原生镜像上验证：独立管理端口 `:9091/metrics`、`/health/liveness|readiness`、接口文档关闭、
 OTLP 导出（含服务名和请求路径）、真实 Redis 读写与 `@Cacheable`（值为带 `@class` 的 JSON）、Swagger UI（非 prod）。
 
+`ss.web.error-format=problem-detail` 也已在原生镜像上实测（它是运行期读取的值，不是条件 Bean，运行期设置即可生效）：
+业务异常 422、未知异常 500、参数校验失败 400、不存在的路径 404、下游失败 502，都是 `application/problem+json`，
+带 `code`、`detail`、`title`、`status`、`instance`、`traceId`；成功响应仍是 `Resp`。
+
 starter 自己需要的提示（默认配置文件、`aot.factories`）已内置。**应用代码**需要注意，这是 GraalVM 的限制，JVM 模式不需要：
 
 - 只通过 `JacksonUtils.fromJson(json, Xxx.class)` 反序列化、没有控制器引用的类型，要自己注册反射提示，

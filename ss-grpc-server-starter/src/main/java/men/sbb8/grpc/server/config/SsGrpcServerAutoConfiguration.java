@@ -53,8 +53,7 @@ public class SsGrpcServerAutoConfiguration {
      * 异常拦截器的顺序：紧贴观测拦截器（{@code @Order(0)}）的内侧。
      * <p>Boot 默认把异常拦截器放在最外层，异常是在观测范围之外被处理的，于是：服务端指标 / span 看不到失败调用的真实状态
      * （业务异常、未知异常都记成 UNKNOWN），异常处理时打的日志也没有追踪号。放进观测范围内就都正常了。
-     * <p>取 1 而不是更靠后，是为了让顺序更靠后的拦截器（如 Spring Security 的认证拦截器）仍在它的内侧，
-     * 它们抛出的异常照样会被这里的处理器接住。
+     * <p>顺序比它小的拦截器（更靠外）抛出的异常不会经过这里的处理器。
      */
     static final int EXCEPTION_INTERCEPTOR_ORDER = 1;
 
