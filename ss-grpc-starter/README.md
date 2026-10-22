@@ -26,6 +26,21 @@ readinessProbe:
 
 注意：k8s 的 gRPC 探针要求 k8s 1.24+，端口只能写数字，且不支持 TLS，探针端口须是明文端口。
 
+## 指标（Prometheus 抓取）
+
+没有 web 容器，所以 starter 用 JDK 自带的 `HttpServer` 在独立端口提供 `/metrics`（默认 `:9091/metrics`），
+由两个守护线程处理，不占用 gRPC 和业务线程。内容包括 JVM 指标和 Boot 内置的 gRPC 观测指标
+（`grpc_server_seconds`、`grpc_client_seconds` 等，已开启直方图，所有指标带 `application` 标签）。
+
+| 配置 | 默认值 | 说明 |
+|---|---|---|
+| `ss.grpc.metrics.prometheus.enabled` | `true` | 设为 `false` 不监听任何 HTTP 端口 |
+| `ss.grpc.metrics.prometheus.port` | `9091` | 端口被占用时启动会失败并给出提示；`0` 为随机端口 |
+| `ss.grpc.metrics.prometheus.path` | `/metrics` | 抓取路径 |
+
+端口只是 Pod 内的端口；用 ServiceMonitor / PodMonitor 或 Pod 注解让 Prometheus 抓取。
+链路追踪（OTLP）与此无关，需要时另行引入导出器。
+
 ## 错误模型
 
 - 服务端抛 `GrpcBusinessException(业务码, 参数)`，转成该业务码对应的 gRPC 状态，

@@ -1,11 +1,16 @@
 package men.sbb8.grpc.starter.config;
 
+import com.sun.net.httpserver.HttpServer;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import men.sbb8.grpc.starter.client.DefaultDeadlineClientInterceptor;
+import men.sbb8.grpc.starter.metrics.PrometheusScrapeServer;
 import men.sbb8.grpc.starter.server.BusinessExceptionHandler;
 import men.sbb8.grpc.starter.server.FallbackExceptionHandler;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.grpc.server.autoconfigure.GrpcServerAutoConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -56,6 +61,23 @@ public class SsGrpcAutoConfiguration {
         @ConditionalOnMissingBean
         DefaultDeadlineClientInterceptor ssDefaultDeadlineClientInterceptor(SsGrpcProperties properties) {
             return new DefaultDeadlineClientInterceptor(properties.getClient().getDefaultDeadline());
+        }
+    }
+
+    /**
+     * Prometheus 抓取端口：ss.grpc.metrics.prometheus.enabled=false 关闭
+     */
+    @Configuration(proxyBeanMethods = false)
+    @ConditionalOnClass({PrometheusMeterRegistry.class, HttpServer.class})
+    @ConditionalOnProperty(prefix = "ss.grpc.metrics.prometheus", name = "enabled", matchIfMissing = true)
+    static class MetricsConfiguration {
+
+        @Bean
+        @ConditionalOnMissingBean
+        PrometheusScrapeServer ssPrometheusScrapeServer(ObjectProvider<PrometheusMeterRegistry> registry,
+                                                       SsGrpcProperties properties) {
+            SsGrpcProperties.Prometheus prometheus = properties.getMetrics().getPrometheus();
+            return new PrometheusScrapeServer(registry::getIfAvailable, prometheus.getPort(), prometheus.getPath());
         }
     }
 }
