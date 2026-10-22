@@ -1,4 +1,4 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import men.sbb8.grpc.server.config.SsGrpcServerRuntimeHints;
 import org.junit.jupiter.api.Test;

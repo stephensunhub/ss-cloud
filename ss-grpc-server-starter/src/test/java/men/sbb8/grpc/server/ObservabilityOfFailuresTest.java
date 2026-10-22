@@ -1,4 +1,4 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -6,8 +6,8 @@ import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import men.sbb8.grpc.starter.test.GreeterGrpc;
-import men.sbb8.grpc.starter.test.HelloRequest;
+import men.sbb8.grpc.server.test.GreeterGrpc;
+import men.sbb8.grpc.server.test.HelloRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;

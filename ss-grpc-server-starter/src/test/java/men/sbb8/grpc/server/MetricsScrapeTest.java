@@ -1,8 +1,8 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import men.sbb8.grpc.core.metrics.PrometheusScrapeServer;
-import men.sbb8.grpc.starter.test.GreeterGrpc;
-import men.sbb8.grpc.starter.test.HelloRequest;
+import men.sbb8.grpc.server.test.GreeterGrpc;
+import men.sbb8.grpc.server.test.HelloRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.grpc.test.autoconfigure.AutoConfigureTestGrpcTransport;

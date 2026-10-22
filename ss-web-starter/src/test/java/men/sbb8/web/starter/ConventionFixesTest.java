@@ -69,7 +69,7 @@ class ConventionFixesTest {
     @Test
     void applicationAdviceOverridesStarterHandler() throws Exception {
         mvc.perform(get("/unsupported"))
-                .andExpect(status().isIAmATeapot())
+                .andExpect(status().is(418))
                 .andExpect(jsonPath("$.data").value("APP-HANDLER"));
         // 应用没处理的异常，仍由 starter 兜底
         mvc.perform(get("/boom")).andExpect(status().isInternalServerError())

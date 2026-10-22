@@ -9,6 +9,8 @@ import org.slf4j.MDC;
 
 /**
  * 响应体
+ *
+ * @author Stephen
  */
 @Getter
 @Schema(description = "统一响应体")

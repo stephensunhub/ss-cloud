@@ -1,4 +1,4 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import io.grpc.Status;
 import org.springframework.grpc.server.advice.GrpcAdvice;

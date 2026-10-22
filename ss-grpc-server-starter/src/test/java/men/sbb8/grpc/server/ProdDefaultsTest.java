@@ -1,4 +1,4 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,4 +1,4 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -8,9 +8,9 @@ import men.sbb8.grpc.core.error.BusinessCode;
 import men.sbb8.grpc.core.error.CommonCode;
 import men.sbb8.grpc.core.error.ErrorDetails;
 import men.sbb8.grpc.core.error.GrpcBusinessException;
-import men.sbb8.grpc.starter.test.GreeterGrpc;
-import men.sbb8.grpc.starter.test.HelloReply;
-import men.sbb8.grpc.starter.test.HelloRequest;
+import men.sbb8.grpc.server.test.GreeterGrpc;
+import men.sbb8.grpc.server.test.HelloReply;
+import men.sbb8.grpc.server.test.HelloRequest;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.stereotype.Service;
 

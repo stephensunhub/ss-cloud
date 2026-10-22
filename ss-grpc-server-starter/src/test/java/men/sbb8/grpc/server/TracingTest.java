@@ -1,10 +1,10 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import com.sun.net.httpserver.HttpServer;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
-import men.sbb8.grpc.starter.test.GreeterGrpc;
-import men.sbb8.grpc.starter.test.HelloRequest;
+import men.sbb8.grpc.server.test.GreeterGrpc;
+import men.sbb8.grpc.server.test.HelloRequest;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

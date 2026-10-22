@@ -1,4 +1,4 @@
-package men.sbb8.grpc.starter;
+package men.sbb8.grpc.server;
 
 import io.grpc.Channel;
 import io.grpc.health.v1.HealthCheckRequest;
