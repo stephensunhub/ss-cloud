@@ -42,7 +42,11 @@ public class BusinessExceptionHandler implements GrpcExceptionHandler {
                 log.warn("下游业务错误: status={}, code={}, msg={}", e.getStatus().getCode(), detail.getCode(), detail.getMsg());
                 return e.getStatus().withDescription(detail.getMsg()).asException(ErrorDetails.trailers(detail));
             }
-            log.error("下游调用失败: {}", e.getMessage(), e);
+            if (CallerStatuses.isTransient(e.getStatus().getCode())) {
+                log.warn("下游暂时不可用: {}", e.getMessage());
+            } else {
+                log.error("下游调用失败: {}", e.getMessage(), e);
+            }
             return ErrorDetails.toStatusException(CommonCode.DOWNSTREAM_ERROR, Map.of());
         }
         return null;

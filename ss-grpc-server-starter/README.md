@@ -40,6 +40,7 @@ readinessProbe:
 - 未知异常统一为 `INTERNAL` + `SYSTEM_ERROR`，不暴露细节
 - 直接抛出的 `StatusRuntimeException`：带 `ErrorDetail` 或属于调用方错误类（参数、不存在、权限等）的原样返回，
   其余丢弃描述换成通用错误
+- 下游暂时不可用（`UNAVAILABLE`、`DEADLINE_EXCEEDED`）只打一行 WARN、不带堆栈，避免下游宕机时日志刷屏；其他被隐藏的内部错误仍是 ERROR 并带堆栈
 - 处理器的先后：应用自己的（`@GrpcAdvice` 等）→ 业务异常处理 → 兜底，前面的先处理
 - 应用写 `@GrpcAdvice` 时，**类和方法都必须是 `public`**，否则 Spring gRPC 反射调用失败，会被悄悄吞成通用的 `INTERNAL`
 

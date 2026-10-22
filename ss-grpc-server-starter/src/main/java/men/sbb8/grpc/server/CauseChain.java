@@ -4,6 +4,8 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * 在异常的 cause 链里找指定类型：异步代码里业务异常常被 CompletionException、ExecutionException 等包着
+ *
+ * @author Stephen
  */
 final class CauseChain {
 

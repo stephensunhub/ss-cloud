@@ -91,6 +91,8 @@ class TestApp {
                         DemoCode.NAME_TAKEN, Map.of("name", "alice")));
                 case "downstream-internal" -> throw remote(ErrorDetails.toStatusRuntimeException(
                         CommonCode.SYSTEM_ERROR, Map.of()));
+                case "downstream-unavailable" -> throw remote(Status.UNAVAILABLE.withDescription("conn refused 10.0.0.9").asRuntimeException());
+                case "raw-unavailable" -> throw Status.UNAVAILABLE.withDescription("conn refused 10.0.0.9").asRuntimeException();
                 case "downstream-plain" -> throw remote(Status.INVALID_ARGUMENT.asRuntimeException());
                 default -> {
                     responseObserver.onNext(HelloReply.newBuilder().setMessage("hi " + request.getName()).build());

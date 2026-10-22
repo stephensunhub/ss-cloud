@@ -50,7 +50,11 @@ public class FallbackExceptionHandler implements GrpcExceptionHandler {
         if (ErrorDetails.find(e).isPresent() || CallerStatuses.isSafeToExpose(code)) {
             return e;
         }
-        log.error("对外隐藏的 gRPC 错误: {}", e.getStatus(), e);
+        if (CallerStatuses.isTransient(code)) {
+            log.warn("对外隐藏的 gRPC 错误（暂时不可用）: {}", e.getStatus());
+        } else {
+            log.error("对外隐藏的 gRPC 错误: {}", e.getStatus(), e);
+        }
         BusinessCode generic = code == Status.Code.UNAVAILABLE || code == Status.Code.DEADLINE_EXCEEDED
                 ? CommonCode.DOWNSTREAM_ERROR : CommonCode.SYSTEM_ERROR;
         return code.toStatus().withDescription(generic.msg())
