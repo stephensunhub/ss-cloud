@@ -8,6 +8,7 @@ option java_outer_classname = "GreeterProto";
 
 service Greeter {
   rpc Hello(HelloRequest) returns (HelloReply) {}
+  rpc Stream(HelloRequest) returns (stream HelloReply) {}
 }
 
 message HelloRequest {

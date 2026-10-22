@@ -99,6 +99,18 @@ class TestApp {
             }
         }
 
+        /** 服务端流式：先发两条消息，再按名字决定正常结束还是中途抛出业务异常 / 未知异常 */
+        @Override
+        public void stream(HelloRequest request, StreamObserver<HelloReply> out) {
+            out.onNext(HelloReply.newBuilder().setMessage("part-1").build());
+            out.onNext(HelloReply.newBuilder().setMessage("part-2").build());
+            switch (request.getName()) {
+                case "stream-business" -> throw new GrpcBusinessException(DemoCode.NAME_TAKEN, Map.of("name", "streamed"));
+                case "stream-boom" -> throw new IllegalStateException("secret internal detail");
+                default -> out.onCompleted();
+            }
+        }
+
         private static RuntimeException remote(StatusRuntimeException failure) {
             return GrpcCalls.call(() -> {
                 throw failure;
