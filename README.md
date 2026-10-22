@@ -107,3 +107,9 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 - HTTP 客户端用 `@HttpExchange` + `RestClient`，不用 Feign、不用手写 HTTP 客户端
 - Web 相关的封装（Jackson、Redis 序列化、JSON 持久化转换等）都在 `ss-web-starter`，gRPC 走 protobuf，不带 Jackson
 - 原有的 hkx-cloud4 项目只作参考，不在本仓库里修改
+- 从 hkx-cloud4 迁移功能的原则：官方（Boot / Spring Cloud / Micrometer）已经有的用配置解决，不自己造 Bean；只迁官方没有、且确实有价值的部分。
+  线程池只调了 `spring.task.*` 的默认值并补了"拒绝计数"（见 `ss-web-starter` README）。**没有迁移**的：
+  - `ioExecutor` / `cpuExecutor` / 自制虚拟线程执行器：命名线程池的隔离是应用的设计；并发上限官方已有 `spring.task.execution.simple.concurrency-limit`
+  - RocketMQ 指标：ss-cloud 没有 RocketMQ 依赖；hkx 的实现每条消息都带 `queue_id`、`broker_name` 标签，基数偏高。要用时做成独立的可选模块，并先看客户端自带的指标
+  - Loki：hkx 里其实没有 Loki appender。日志输出结构化 JSON 到标准输出，由 Alloy / Promtail 采集，应用里不放网络 appender
+  - 写操作日志（拦截器打印完整请求和响应）：与"日志不带用户输入"冲突，且依赖外部 proto 的自定义选项。需要"谁做了什么"的审计，应在应用层按业务事件记录并带上操作人

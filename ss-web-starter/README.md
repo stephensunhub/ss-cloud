@@ -240,6 +240,29 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
   Consul 的 `DiscoveryClient` 在原生镜像下没有单独验证过。
   要同时使用 GraalVM 和 Consul，需要自己补反射提示或等上游支持。
 
+## 异步任务与线程池
+
+starter 默认开启虚拟线程（`spring.threads.virtual.enabled=true`），`@Async` 和 `@Scheduled` 都跑在虚拟线程上。线程池的配置**全部用 Boot 官方的 `spring.task.*`**，
+starter 不自己创建线程池 Bean，只改了几个不适合生产的默认值（见 `ss-web-defaults.yaml`）：
+
+| 配置 | starter 默认 | Boot 默认 | 说明 |
+|---|---|---|---|
+| `spring.task.execution.propagate-context` | `true` | `false` | `@Async` 里的日志和链路带上调用方的 `traceId`。已测试：关闭后异步线程里的 `traceId` 为空 |
+| `spring.task.execution.shutdown.await-termination(-period)` | `true` / `30s` | 不等待 | 停机时等进行中的异步任务，与 `spring.lifecycle.timeout-per-shutdown-phase` 一致 |
+| `spring.task.scheduling.shutdown.*` | 同上 | 不等待 | |
+| `spring.task.execution.pool.max-size` / `queue-capacity` | `64` / `200` | 都不设上限 | **仅关闭虚拟线程时生效**。Boot 默认实际是 8 个核心线程加无界队列，过载时不拒绝、只堆积；数值只是起点，按负载调整 |
+| `spring.task.scheduling.pool.size` | `4` | `1` | **仅关闭虚拟线程时生效**。默认的 1 会让一个慢任务堵住所有 `@Scheduled` |
+
+- **传递的是 Observation 上下文**：HTTP 请求本来就在 Observation 里处理，所以 `@Async` 能拿到 `traceId`。自己用 `Tracer.nextSpan()` 手动开的 span 不在其中，
+  不会被传到异步线程
+- **线程池满了的处理**：关闭虚拟线程时，线程池拒绝任务会记一条错误日志并计数 `executor.rejected`（标签 `executor` 为线程名前缀），然后抛出
+  `TaskRejectedException`，不让请求线程代跑任务。线程池的活跃数、队列长度等指标由 Boot 自动提供
+- **虚拟线程没有队列，也不限并发**。要保护下游连接池，设 `spring.task.execution.simple.concurrency-limit`，
+  配合 `reject-tasks-when-limit-reached=true` 可以在超限时拒绝而不是排队
+- **需要隔离的线程池**（例如把慢的外部调用与其他任务隔开）由应用自己定义，用 Boot 的 `ThreadPoolTaskExecutorBuilder` 创建会自动继承上面的默认值。
+  starter 不预置 `ioExecutor` / `cpuExecutor` 这类命名线程池，因为怎么隔离是应用的设计
+- 没有在原生镜像里验证过这一组配置（只有 JVM 下的测试）
+
 ## 生产环境默认值
 
 激活 `prod` / `production` 时：关闭 Swagger UI 和 `/v3/api-docs`、actuator 监控端点改用独立端口 `9091`（指标 `:9091/metrics`，健康 `:9091/health/liveness`、`/health/readiness`）、

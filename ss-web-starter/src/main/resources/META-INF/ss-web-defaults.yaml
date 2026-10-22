@@ -10,6 +10,26 @@ spring:
       enabled: true
   lifecycle:
     timeout-per-shutdown-phase: 30s
+  task:
+    execution:
+      # @Async 等异步任务里的日志和链路带上调用方的 traceId（Boot 默认关闭）
+      propagate-context: true
+      shutdown:
+        # 停机时等待进行中的异步任务（Boot 默认不等待），时长与上面的 timeout-per-shutdown-phase 一致
+        await-termination: true
+        await-termination-period: 30s
+      # 以下两组只在关闭虚拟线程（spring.threads.virtual.enabled=false）时生效，数值只是起点，按负载调整。
+      # Boot 的默认值是"最大线程数和队列都不设上限"，实际只有 8 个核心线程加无界队列，过载时不拒绝、只堆积
+      pool:
+        max-size: 64
+        queue-capacity: 200
+    scheduling:
+      shutdown:
+        await-termination: true
+        await-termination-period: 30s
+      pool:
+        # Boot 默认 1：一个慢任务会堵住所有 @Scheduled
+        size: 4
   http:
     clients:
       connect-timeout: 3s
