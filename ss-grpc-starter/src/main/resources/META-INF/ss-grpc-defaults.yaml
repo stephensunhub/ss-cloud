@@ -7,8 +7,13 @@ spring:
   grpc:
     server:
       port: 9001
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
+      health:
+        # k8s gRPC 探针按服务名探测 grpc.health.v1：
+        #   存活 service: liveness   就绪 service: readiness   service 留空表示整体健康
+        # 与 Boot HTTP 探针一致：存活只看进程自身状态，不带外部依赖；就绪看是否接收流量（含优雅停机），
+        # 应用需要把依赖（数据库等）纳入就绪时，追加 include，名称是 actuator 健康贡献者名
+        service:
+          liveness:
+            include: livenessState
+          readiness:
+            include: readinessState

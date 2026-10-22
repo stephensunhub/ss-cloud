@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
 @AutoConfigureTestGrpcTransport
@@ -145,6 +144,5 @@ class GrpcStarterTest {
     @Test
     void defaultsApplied() {
         assertEquals("9001", env.getProperty("spring.grpc.server.port"));
-        assertTrue(env.getProperty("management.endpoints.web.exposure.include", "").contains("prometheus"));
     }
 }

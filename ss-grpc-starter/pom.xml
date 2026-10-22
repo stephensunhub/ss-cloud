@@ -24,10 +24,8 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
-        </dependency>
+        <!-- 注意：没有 web 容器，actuator 只作为库使用（健康状态汇总、指标基础设施），不会暴露 HTTP 端点。
+             健康检查走 gRPC 原生的 grpc.health.v1，指标的对外上报方式另行决定 -->
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
