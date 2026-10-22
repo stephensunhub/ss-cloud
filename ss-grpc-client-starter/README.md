@@ -20,6 +20,10 @@ gRPC **客户端**规范 starter。引入后获得：调用失败还原为带业
 一元调用没有显式 deadline 时使用 `ss.grpc.client.default-deadline`（默认 30s，0 关闭）。
 流式调用不受影响；调用方自己设置的 deadline 优先。
 
+有成本：基准测得每个调用约多花 **18µs 的客户端 CPU**（原生约 12µs，加上默认超时后约 31µs），一个进程每秒发 10 万次调用时约多占 1.8 个核，
+每秒 1 万次时约 0.18 个核，对延迟和吞吐看不出影响。一个进程里高频调用下游（网关、聚合服务）又都自己设了 deadline 时，可以关掉它。
+数据和方法见 [ss-benchmark/BASELINE.md](../ss-benchmark/BASELINE.md) 的实验 4。
+
 ## 在 k8s 里调用其他服务（headless Service）
 
 目前 gRPC 的服务发现用 k8s 自带的 headless Service，不引入注册中心（Spring gRPC / Spring Cloud 还没有官方方案，

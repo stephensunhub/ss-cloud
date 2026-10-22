@@ -105,4 +105,19 @@ class SummarizeTest {
         String table = Summarize.table(Summarize.summarize(RESULTS), null);
         assertThat(table).doesNotContain("QPS变化").contains("| a | 64 | 8 | 1 | 2 |");
     }
+
+    @Test
+    void clientCpuColumnsAppearOnlyWhenTheResultsHaveThem() {
+        List<Summarize.Row> rows = Summarize.summarize(List.of(
+                "RESULT label=raw run=1 conc=32 ch=4 win=1 rps=100000 p50=1ms p99=2ms p999=3ms max=9ms errs=0 srvCores=8 srvUsPerReq=76.0 cliCores=1.4 cliUsPerReq=13.0",
+                "RESULT label=raw run=2 conc=32 ch=4 win=1 rps=100000 p50=1ms p99=2ms p999=3ms max=9ms errs=0 srvCores=8 srvUsPerReq=76.0 cliCores=1.4 cliUsPerReq=15.0",
+                "RESULT label=spring run=1 conc=32 ch=4 win=1 rps=90000 p50=1ms p99=2ms p999=3ms max=9ms errs=0 srvCores=7 srvUsPerReq=76.0 cliCores=3.5 cliUsPerReq=38.0"));
+
+        assertThat(rows.getFirst().clientUsPerReq()).isCloseTo(14.0, within(1e-9));
+        // (15 - 13) / 14
+        assertThat(rows.getFirst().clientUsRangePct()).isCloseTo(14.286, within(0.001));
+        assertThat(Summarize.table(rows, null)).contains("客户端每请求CPU(µs)").contains("| 14.0 | 14.3% |").contains("| 38.0 | - |");
+        // 旧格式的结果没有客户端 CPU：不显示这两列，也不会出错
+        assertThat(Summarize.table(Summarize.summarize(RESULTS), null)).doesNotContain("客户端每请求CPU");
+    }
 }

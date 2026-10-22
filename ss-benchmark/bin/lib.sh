@@ -50,9 +50,10 @@ stop_server() {
   fi
 }
 
-# client 参数...   自动带上服务端进程号（用来统计服务端 CPU），只输出 RESULT 行
+# client 参数...   自动带上服务端进程号（用来统计服务端 CPU），只输出 RESULT 行。
+# 环境变量 CLIENT_EXTRA 里的内容追加到客户端 JVM 的参数（-D 开关，用于 --client spring）
 client() {
   # shellcheck disable=SC2086
-  java $CLIENT_OPTS -cp "$CP" men.sbb8.benchmark.BenchClient \
+  java $CLIENT_OPTS $CLIENT_EXTRA -cp "$CP" men.sbb8.benchmark.BenchClient \
       --target "127.0.0.1:$PORT" --pid "$SERVER_PID" "$@" | grep '^RESULT'
 }

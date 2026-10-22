@@ -1,0 +1,48 @@
+### 环境: Apple M5 Pro, 18 核, JDK 25.0.3, 开始 2026-10-22 21:41:50
+### 负载(开始前): 12.14 7.98 6.52
+
+### 实验 4：客户端 starter 开销（服务端固定为 raw；并发 64，8 条连接；每个变体 3 次，交错进行）
+RESULT label=exp4-raw run=1 conc=64 ch=8 win=1 rps=94464 p50=0.632ms p99=1.474ms p999=2.404ms max=55.2ms errs=0 srvCores=13.87 srvUsPerReq=146.8 cliCores=1.17 cliUsPerReq=12.4
+RESULT label=exp4-raw run=1 conc=64 ch=8 win=2 rps=94632 p50=0.633ms p99=1.434ms p999=2.197ms max=8.8ms errs=0 srvCores=14.10 srvUsPerReq=149.0 cliCores=1.18 cliUsPerReq=12.5
+RESULT label=exp4-deadline-only run=1 conc=64 ch=8 win=1 rps=92140 p50=0.649ms p99=1.590ms p999=2.845ms max=25.9ms errs=0 srvCores=12.71 srvUsPerReq=138.0 cliCores=2.90 cliUsPerReq=31.5
+RESULT label=exp4-deadline-only run=1 conc=64 ch=8 win=2 rps=92903 p50=0.642ms p99=1.587ms p999=2.818ms max=37.7ms errs=0 srvCores=12.78 srvUsPerReq=137.6 cliCores=2.89 cliUsPerReq=31.1
+RESULT label=exp4-spring-obs-off-no-deadline run=1 conc=64 ch=8 win=1 rps=93691 p50=0.640ms p99=1.471ms p999=2.267ms max=16.7ms errs=0 srvCores=13.86 srvUsPerReq=147.9 cliCores=1.18 cliUsPerReq=12.6
+RESULT label=exp4-spring-obs-off-no-deadline run=1 conc=64 ch=8 win=2 rps=94191 p50=0.639ms p99=1.430ms p999=2.203ms max=16.1ms errs=0 srvCores=13.96 srvUsPerReq=148.2 cliCores=1.19 cliUsPerReq=12.6
+RESULT label=exp4-spring-obs-off run=1 conc=64 ch=8 win=1 rps=93237 p50=0.642ms p99=1.546ms p999=2.467ms max=31.9ms errs=0 srvCores=12.25 srvUsPerReq=131.4 cliCores=2.81 cliUsPerReq=30.1
+RESULT label=exp4-spring-obs-off run=1 conc=64 ch=8 win=2 rps=93573 p50=0.638ms p99=1.550ms p999=2.481ms max=92.1ms errs=0 srvCores=12.13 srvUsPerReq=129.7 cliCores=2.77 cliUsPerReq=29.6
+RESULT label=exp4-spring-metrics run=1 conc=64 ch=8 win=1 rps=94690 p50=0.625ms p99=1.587ms p999=2.371ms max=27.0ms errs=0 srvCores=11.02 srvUsPerReq=116.4 cliCores=3.47 cliUsPerReq=36.7
+RESULT label=exp4-spring-metrics run=1 conc=64 ch=8 win=2 rps=95556 p50=0.621ms p99=1.577ms p999=2.342ms max=78.0ms errs=0 srvCores=11.08 srvUsPerReq=116.0 cliCores=3.47 cliUsPerReq=36.3
+RESULT label=exp4-spring-prod-sampling-0.1 run=1 conc=64 ch=8 win=1 rps=94972 p50=0.619ms p99=1.639ms p999=3.343ms max=61.5ms errs=0 srvCores=11.46 srvUsPerReq=120.6 cliCores=3.33 cliUsPerReq=35.0
+RESULT label=exp4-spring-prod-sampling-0.1 run=1 conc=64 ch=8 win=2 rps=96013 p50=0.620ms p99=1.523ms p999=2.318ms max=33.6ms errs=0 srvCores=11.56 srvUsPerReq=120.4 cliCores=3.36 cliUsPerReq=34.9
+RESULT label=exp4-spring-dev-sampling-1.0 run=1 conc=64 ch=8 win=1 rps=96490 p50=0.614ms p99=1.559ms p999=2.337ms max=90.2ms errs=0 srvCores=11.18 srvUsPerReq=115.9 cliCores=3.54 cliUsPerReq=36.7
+RESULT label=exp4-spring-dev-sampling-1.0 run=1 conc=64 ch=8 win=2 rps=97029 p50=0.612ms p99=1.536ms p999=2.369ms max=29.0ms errs=0 srvCores=11.37 srvUsPerReq=117.2 cliCores=3.49 cliUsPerReq=35.9
+RESULT label=exp4-raw run=2 conc=64 ch=8 win=1 rps=96579 p50=0.619ms p99=1.466ms p999=2.267ms max=26.4ms errs=0 srvCores=13.40 srvUsPerReq=138.7 cliCores=1.18 cliUsPerReq=12.3
+RESULT label=exp4-raw run=2 conc=64 ch=8 win=2 rps=96465 p50=0.622ms p99=1.429ms p999=2.227ms max=21.0ms errs=0 srvCores=13.61 srvUsPerReq=141.1 cliCores=1.16 cliUsPerReq=12.0
+RESULT label=exp4-deadline-only run=2 conc=64 ch=8 win=1 rps=96215 p50=0.624ms p99=1.490ms p999=2.265ms max=34.2ms errs=0 srvCores=12.29 srvUsPerReq=127.7 cliCores=2.83 cliUsPerReq=29.4
+RESULT label=exp4-deadline-only run=2 conc=64 ch=8 win=2 rps=95076 p50=0.629ms p99=1.522ms p999=2.528ms max=39.5ms errs=0 srvCores=12.36 srvUsPerReq=130.0 cliCores=2.82 cliUsPerReq=29.7
+RESULT label=exp4-spring-obs-off-no-deadline run=2 conc=64 ch=8 win=1 rps=96645 p50=0.621ms p99=1.425ms p999=2.163ms max=34.5ms errs=0 srvCores=13.72 srvUsPerReq=141.9 cliCores=1.19 cliUsPerReq=12.4
+RESULT label=exp4-spring-obs-off-no-deadline run=2 conc=64 ch=8 win=2 rps=96602 p50=0.621ms p99=1.409ms p999=2.127ms max=9.7ms errs=0 srvCores=13.80 srvUsPerReq=142.8 cliCores=1.17 cliUsPerReq=12.1
+RESULT label=exp4-spring-obs-off run=2 conc=64 ch=8 win=1 rps=94966 p50=0.626ms p99=1.568ms p999=3.009ms max=52.6ms errs=0 srvCores=12.42 srvUsPerReq=130.8 cliCores=2.87 cliUsPerReq=30.3
+RESULT label=exp4-spring-obs-off run=2 conc=64 ch=8 win=2 rps=95651 p50=0.627ms p99=1.493ms p999=2.306ms max=34.7ms errs=0 srvCores=12.38 srvUsPerReq=129.4 cliCores=2.88 cliUsPerReq=30.1
+RESULT label=exp4-spring-metrics run=2 conc=64 ch=8 win=1 rps=95727 p50=0.617ms p99=1.579ms p999=2.981ms max=53.0ms errs=0 srvCores=11.88 srvUsPerReq=124.1 cliCores=3.48 cliUsPerReq=36.3
+RESULT label=exp4-spring-metrics run=2 conc=64 ch=8 win=2 rps=96701 p50=0.614ms p99=1.521ms p999=2.480ms max=50.7ms errs=0 srvCores=11.91 srvUsPerReq=123.2 cliCores=3.51 cliUsPerReq=36.3
+RESULT label=exp4-spring-prod-sampling-0.1 run=2 conc=64 ch=8 win=1 rps=95379 p50=0.622ms p99=1.584ms p999=2.408ms max=59.3ms errs=0 srvCores=12.35 srvUsPerReq=129.5 cliCores=3.48 cliUsPerReq=36.5
+RESULT label=exp4-spring-prod-sampling-0.1 run=2 conc=64 ch=8 win=2 rps=95971 p50=0.622ms p99=1.543ms p999=2.344ms max=17.7ms errs=0 srvCores=12.47 srvUsPerReq=130.0 cliCores=3.48 cliUsPerReq=36.3
+RESULT label=exp4-spring-dev-sampling-1.0 run=2 conc=64 ch=8 win=1 rps=96015 p50=0.622ms p99=1.522ms p999=2.283ms max=20.7ms errs=0 srvCores=12.26 srvUsPerReq=127.7 cliCores=3.59 cliUsPerReq=37.3
+RESULT label=exp4-spring-dev-sampling-1.0 run=2 conc=64 ch=8 win=2 rps=95220 p50=0.622ms p99=1.578ms p999=2.649ms max=56.8ms errs=0 srvCores=12.41 srvUsPerReq=130.3 cliCores=3.57 cliUsPerReq=37.5
+RESULT label=exp4-raw run=3 conc=64 ch=8 win=1 rps=95822 p50=0.627ms p99=1.419ms p999=2.123ms max=16.3ms errs=0 srvCores=13.68 srvUsPerReq=142.8 cliCores=1.17 cliUsPerReq=12.2
+RESULT label=exp4-raw run=3 conc=64 ch=8 win=2 rps=95978 p50=0.625ms p99=1.431ms p999=2.160ms max=15.2ms errs=0 srvCores=13.60 srvUsPerReq=141.7 cliCores=1.16 cliUsPerReq=12.1
+RESULT label=exp4-deadline-only run=3 conc=64 ch=8 win=1 rps=93213 p50=0.642ms p99=1.550ms p999=2.494ms max=21.9ms errs=0 srvCores=12.66 srvUsPerReq=135.8 cliCores=2.90 cliUsPerReq=31.2
+RESULT label=exp4-deadline-only run=3 conc=64 ch=8 win=2 rps=93070 p50=0.644ms p99=1.557ms p999=2.438ms max=44.2ms errs=0 srvCores=12.69 srvUsPerReq=136.4 cliCores=2.90 cliUsPerReq=31.2
+RESULT label=exp4-spring-obs-off-no-deadline run=3 conc=64 ch=8 win=1 rps=94551 p50=0.634ms p99=1.443ms p999=2.239ms max=14.8ms errs=0 srvCores=13.96 srvUsPerReq=147.7 cliCores=1.18 cliUsPerReq=12.5
+RESULT label=exp4-spring-obs-off-no-deadline run=3 conc=64 ch=8 win=2 rps=94004 p50=0.638ms p99=1.442ms p999=2.216ms max=9.4ms errs=0 srvCores=13.96 srvUsPerReq=148.5 cliCores=1.14 cliUsPerReq=12.2
+RESULT label=exp4-spring-obs-off run=3 conc=64 ch=8 win=1 rps=92689 p50=0.646ms p99=1.570ms p999=2.627ms max=20.9ms errs=0 srvCores=12.68 srvUsPerReq=136.8 cliCores=2.83 cliUsPerReq=30.5
+RESULT label=exp4-spring-obs-off run=3 conc=64 ch=8 win=2 rps=92473 p50=0.647ms p99=1.571ms p999=2.483ms max=51.4ms errs=0 srvCores=12.67 srvUsPerReq=137.0 cliCores=2.83 cliUsPerReq=30.6
+RESULT label=exp4-spring-metrics run=3 conc=64 ch=8 win=1 rps=92977 p50=0.640ms p99=1.579ms p999=2.462ms max=78.0ms errs=0 srvCores=12.23 srvUsPerReq=131.6 cliCores=3.47 cliUsPerReq=37.3
+RESULT label=exp4-spring-metrics run=3 conc=64 ch=8 win=2 rps=93961 p50=0.636ms p99=1.552ms p999=2.266ms max=16.8ms errs=0 srvCores=12.23 srvUsPerReq=130.2 cliCores=3.50 cliUsPerReq=37.2
+RESULT label=exp4-spring-prod-sampling-0.1 run=3 conc=64 ch=8 win=1 rps=94634 p50=0.629ms p99=1.546ms p999=2.396ms max=43.6ms errs=0 srvCores=12.30 srvUsPerReq=130.0 cliCores=3.40 cliUsPerReq=35.9
+RESULT label=exp4-spring-prod-sampling-0.1 run=3 conc=64 ch=8 win=2 rps=96402 p50=0.620ms p99=1.503ms p999=2.275ms max=26.7ms errs=0 srvCores=12.36 srvUsPerReq=128.3 cliCores=3.43 cliUsPerReq=35.6
+RESULT label=exp4-spring-dev-sampling-1.0 run=3 conc=64 ch=8 win=1 rps=94668 p50=0.621ms p99=1.616ms p999=2.922ms max=53.0ms errs=0 srvCores=12.22 srvUsPerReq=129.1 cliCores=3.57 cliUsPerReq=37.7
+RESULT label=exp4-spring-dev-sampling-1.0 run=3 conc=64 ch=8 win=2 rps=95104 p50=0.628ms p99=1.522ms p999=2.232ms max=24.6ms errs=0 srvCores=12.32 srvUsPerReq=129.6 cliCores=3.55 cliUsPerReq=37.3
+
+### 结束 2026-10-22 21:52:07，负载: 24.58 22.94 16.22

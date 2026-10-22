@@ -25,7 +25,7 @@ public final class Summarize {
     /** 一种配置在一个并发档位下的汇总 */
     record Row(String label, int concurrency, int channels, int runs, int windows, double rps, double rpsRangePct,
                double p50, double p99, double p999, long errors, double cores, double usPerReq,
-               double usRangePct) {
+               double usRangePct, double clientUsPerReq, double clientUsRangePct) {
 
         /** 与基线对应的键：同一个标签在不同并发、不同连接数下是不同的行 */
         String key() {
@@ -59,7 +59,9 @@ public final class Summarize {
                     runsOf(windows).size(), windows.size(), mean(windows, "rps"), rangePct(windows, "rps"),
                     mean(windows, "p50"), mean(windows, "p99"), mean(windows, "p999"),
                     (long) windows.stream().mapToDouble(w -> Double.parseDouble(w.get("errs"))).sum(),
-                    mean(windows, "srvCores"), mean(windows, "srvUsPerReq"), rangePct(windows, "srvUsPerReq")));
+                    mean(windows, "srvCores"), mean(windows, "srvUsPerReq"), rangePct(windows, "srvUsPerReq"),
+                    has(windows, "cliUsPerReq") ? mean(windows, "cliUsPerReq") : 0,
+                    has(windows, "cliUsPerReq") ? rangePct(windows, "cliUsPerReq") : 0));
         });
         return rows;
     }
@@ -84,6 +86,11 @@ public final class Summarize {
         return (java.util.Collections.max(perRun) - java.util.Collections.min(perRun)) / average * 100;
     }
 
+    /** 旧的结果文件没有客户端 CPU 字段 */
+    private static boolean has(List<Map<String, String>> windows, String key) {
+        return windows.stream().allMatch(w -> w.containsKey(key));
+    }
+
     private static double mean(List<Map<String, String>> windows, String key) {
         return windows.stream().mapToDouble(w -> Double.parseDouble(w.get(key))).average().orElse(0);
     }
@@ -93,10 +100,13 @@ public final class Summarize {
         if (baseline != null) {
             baseline.forEach(row -> base.put(row.key(), row));
         }
+        boolean client = rows.stream().anyMatch(row -> row.clientUsPerReq() > 0);
         StringBuilder out = new StringBuilder();
         out.append("| 配置 | 并发 | 连接 | 启动 | 窗口 | QPS | QPS跨启动相差 | P50(ms) | P99(ms) | P99.9(ms) | 错误 | 服务端核数 | 每请求CPU(µs) | CPU跨启动相差 |");
+        out.append(client ? " 客户端每请求CPU(µs) | 客户端CPU跨启动相差 |" : "");
         out.append(baseline == null ? "\n" : " QPS变化 | CPU变化 |\n");
         out.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+        out.append(client ? "---|---|" : "");
         out.append(baseline == null ? "\n" : "---|---|\n");
         for (Row row : rows) {
             out.append(String.format(Locale.ROOT,
@@ -104,6 +114,10 @@ public final class Summarize {
                     row.label(), row.concurrency(), row.channels(), row.runs(), row.windows(), row.rps(),
                     range(row.runs(), row.rpsRangePct()), row.p50(), row.p99(), row.p999(), row.errors(),
                     row.cores(), row.usPerReq(), range(row.runs(), row.usRangePct())));
+            if (client) {
+                out.append(String.format(Locale.ROOT, " %.1f | %s |", row.clientUsPerReq(),
+                        range(row.runs(), row.clientUsRangePct())));
+            }
             if (baseline != null) {
                 Row reference = base.get(row.key());
                 out.append(reference == null ? " - | - |"

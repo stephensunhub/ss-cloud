@@ -1,14 +1,19 @@
 package men.sbb8.benchmark;
 
 import io.grpc.CallOptions;
+import io.grpc.Channel;
+import io.grpc.ClientInterceptors;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.NettyChannelBuilder;
 import io.grpc.stub.ClientCalls;
 import io.grpc.stub.StreamObserver;
 
+import men.sbb8.grpc.client.DefaultDeadlineClientInterceptor;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
@@ -26,6 +31,10 @@ import java.util.concurrent.atomic.AtomicLongArray;
  * 窗口之间有一小段间隙不计入，避免互相串扰。每行结果的格式由 {@link Summarize} 解析。
  * {@code --run} 标记这是同一个配置的第几次服务端启动：不同次启动之间（JIT、GC 布局不同）的差别，
  * 往往比同一次启动内各窗口之间的差别大得多，所以关键的对比要多次启动、交错进行。
+ * <p>
+ * 每行结果同时带客户端自己的 CPU（{@code cliCores}、{@code cliUsPerReq}）。
+ * {@code --client} 选择连接的创建方式：{@code raw}（默认，原生）、{@code deadline}（只加默认超时拦截器）、
+ * {@code spring}（完整的 ss-grpc-client-starter），用来测客户端 starter 的开销。
  * <p>
  * 传入服务端进程号 {@code --pid} 时，用 {@code ps} 取窗口前后的 CPU 时间，得到服务端的占用核数和每个请求的 CPU 微秒数
  * （同机运行时，这是比吞吐更稳的开销指标，但只在相同负载下才能互相比较）。
@@ -51,7 +60,7 @@ public final class BenchClient {
     private static AtomicLongArray errors;
 
     private record Options(String label, int run, String host, int port, int concurrency, int channels, int warmup,
-                           int measure, int windows, int payload, String pid) {
+                           int measure, int windows, int payload, String pid, String client) {
 
         static Options parse(String[] argv) {
             Map<String, String> args = new HashMap<>();
@@ -69,7 +78,8 @@ public final class BenchClient {
                     concurrency, Math.min(Integer.parseInt(args.getOrDefault("--channels", "1")), concurrency),
                     Integer.parseInt(args.getOrDefault("--warmup", "5")),
                     Integer.parseInt(args.getOrDefault("--measure", "10")), windows,
-                    Integer.parseInt(args.getOrDefault("--payload", "64")), args.get("--pid"));
+                    Integer.parseInt(args.getOrDefault("--payload", "64")), args.get("--pid"),
+                    args.getOrDefault("--client", "raw"));
         }
     }
 
@@ -78,13 +88,13 @@ public final class BenchClient {
      */
     private static final class Slot implements StreamObserver<byte[]> {
 
-        private final ManagedChannel channel;
+        private final Channel channel;
         private final byte[] payload;
         private final long[][] samples;
         private final int[] counts;
         private long startedAt;
 
-        Slot(ManagedChannel channel, byte[] payload, int windows) {
+        Slot(Channel channel, byte[] payload, int windows) {
             this.channel = channel;
             this.payload = payload;
             this.samples = new long[windows + 1][1024];
@@ -142,10 +152,22 @@ public final class BenchClient {
         Options options = Options.parse(argv);
         errors = new AtomicLongArray(options.windows() + 1);
 
-        ManagedChannel[] channels = new ManagedChannel[options.channels()];
-        for (int i = 0; i < channels.length; i++) {
-            channels[i] = NettyChannelBuilder.forAddress(options.host(), options.port())
-                    .usePlaintext().directExecutor().build();
+        // client = raw：原生连接；deadline：只加 starter 的默认超时拦截器；spring：完整的 ss-grpc-client-starter
+        SpringChannels spring = null;
+        ManagedChannel[] managed = new ManagedChannel[0];
+        Channel[] channels = new Channel[options.channels()];
+        if (options.client().equals("spring")) {
+            spring = new SpringChannels(options.host(), options.port(), options.channels());
+            System.arraycopy(spring.channels(), 0, channels, 0, channels.length);
+        } else {
+            managed = new ManagedChannel[options.channels()];
+            for (int i = 0; i < managed.length; i++) {
+                managed[i] = NettyChannelBuilder.forAddress(options.host(), options.port())
+                        .usePlaintext().directExecutor().build();
+                channels[i] = options.client().equals("deadline")
+                        ? ClientInterceptors.intercept(managed[i], new DefaultDeadlineClientInterceptor(Duration.ofSeconds(30)))
+                        : managed[i];
+            }
         }
         Slot[] slots = new Slot[options.concurrency()];
         stopped = new CountDownLatch(slots.length);
@@ -161,25 +183,32 @@ public final class BenchClient {
         Thread.sleep(options.warmup() * 1000L);
         for (int window = 1; window <= options.windows(); window++) {
             double cpuBefore = cpuSeconds(options.pid());
+            double selfBefore = selfCpuSeconds();
             long start = System.nanoTime();
             phase = window;
             Thread.sleep(options.measure() * 1000L);
             phase = 0;
             long elapsed = System.nanoTime() - start;
             double cpuAfter = cpuSeconds(options.pid());
+            double selfAfter = selfCpuSeconds();
             Thread.sleep(SETTLE_MILLIS);
-            report(options, slots, window, elapsed / 1e9, cpuAfter - cpuBefore);
+            report(options, slots, window, elapsed / 1e9, cpuAfter - cpuBefore, selfAfter - selfBefore);
         }
 
         phase = -1;
         stopped.await(10, TimeUnit.SECONDS);
-        for (ManagedChannel channel : channels) {
+        for (ManagedChannel channel : managed) {
             channel.shutdownNow();
+        }
+        if (spring != null) {
+            System.out.println("CHECK " + spring.describe());
+            spring.close();
         }
         System.exit(0);
     }
 
-    private static void report(Options options, Slot[] slots, int window, double seconds, double cpuSeconds) {
+    private static void report(Options options, Slot[] slots, int window, double seconds, double cpuSeconds,
+                               double clientCpuSeconds) {
         long[][] parts = new long[slots.length][];
         int total = 0;
         for (int i = 0; i < slots.length; i++) {
@@ -194,11 +223,12 @@ public final class BenchClient {
         }
         Arrays.sort(all);
         System.out.printf(Locale.ROOT,
-                "RESULT label=%s run=%d conc=%d ch=%d win=%d rps=%.0f p50=%.3fms p99=%.3fms p999=%.3fms max=%.1fms errs=%d srvCores=%.2f srvUsPerReq=%.1f%n",
+                "RESULT label=%s run=%d conc=%d ch=%d win=%d rps=%.0f p50=%.3fms p99=%.3fms p999=%.3fms max=%.1fms errs=%d srvCores=%.2f srvUsPerReq=%.1f cliCores=%.2f cliUsPerReq=%.1f%n",
                 options.label(), options.run(), options.concurrency(), options.channels(), window, total / seconds,
                 percentile(all, 0.50), percentile(all, 0.99), percentile(all, 0.999),
                 total == 0 ? 0 : all[total - 1] / 1e6, errors.get(window),
-                cpuSeconds / seconds, total == 0 ? 0 : cpuSeconds / total * 1e6);
+                cpuSeconds / seconds, total == 0 ? 0 : cpuSeconds / total * 1e6,
+                clientCpuSeconds / seconds, total == 0 ? 0 : clientCpuSeconds / total * 1e6);
     }
 
     /** 最近邻法，单位毫秒 */
@@ -207,6 +237,11 @@ public final class BenchClient {
             return 0;
         }
         return sorted[Math.min(sorted.length - 1, (int) Math.ceil(p * sorted.length) - 1)] / 1e6;
+    }
+
+    /** 压测客户端自己累计的 CPU 秒数（比较客户端 starter 的开销时，看的是它而不是服务端） */
+    private static double selfCpuSeconds() {
+        return ProcessHandle.current().info().totalCpuDuration().map(d -> d.toNanos() / 1e9).orElse(0.0);
     }
 
     /** 进程累计的 CPU 秒数（{@code ps -o cputime=} 的格式为 [[h:]m:]s.cc）；没有传进程号时返回 0 */

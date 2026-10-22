@@ -26,6 +26,7 @@
 ```bash
 ss-benchmark/bin/run-all.sh              # 三个实验，约 18 分钟，结果写到 ss-benchmark/target/results-<时间>.txt
 QUICK=1 ss-benchmark/bin/run-all.sh      # 缩短时间，只确认脚本能跑通，结果不能用来比较
+ss-benchmark/bin/run-client.sh           # 实验 4：客户端 starter 的开销，约 12 分钟，和基线（baselines/client/）对比
 ss-benchmark/bin/check-flags.sh          # 确认"去掉直方图桶"的开关确实有效（改动指标配置后先跑这个）
 ```
 
@@ -45,6 +46,7 @@ java -cp ss-benchmark/target/classes men.sbb8.benchmark.Summarize 本次结果.t
 | 1 并发扫描 | 并发 1 / 8 / 32 / 128，原生 grpc-java 对 starter 的 prod 配置；每种服务端启动 2 次 | starter 相对原生有没有额外开销；这台机器的饱和点在哪 |
 | 2 观测开关 | 原生 / 关闭观测 / 指标（有无直方图桶）/ 追踪采样 0.1 与 1.0；每个配置启动 3 次，**交错**排列 | 观测的各个部分各花多少 |
 | 3 连接数 | 1 / 2 / 4 / 8 / 16 条连接，并发 256；启动 1 次 | 单条连接够不够用 |
+| 4 客户端 starter（`bin/run-client.sh`，单独运行） | 服务端固定为原生；客户端：原生 / 只加默认超时 / Spring 的各种开关；每个启动 3 次，**交错** | 客户端 starter 的默认超时和观测各花多少客户端 CPU |
 
 **关键的对比必须多次启动、交错进行**：同一次服务端启动内各窗口很稳定，但不同次启动之间（JIT、GC 布局不同）可以差到 5% 以上，
 单次启动的 A/B 对比曾经得出过自相矛盾的结论（见 [BASELINE.md](BASELINE.md)）。
@@ -69,7 +71,7 @@ java -cp ss-benchmark/target/classes men.sbb8.benchmark.Summarize 本次结果.t
 
 - 客户端和服务端在同一台机器上，回环、明文、64 字节、空处理器；服务端的真实处理器、数据库、网络、TLS 都不在其中
 - 追踪**没有配置导出地址**，所以只测了创建 span 的开销，没测发送（批处理、OTLP/HTTP）的开销
-- 压测客户端是原生 grpc-java，**没有**包含客户端 starter（默认超时、客户端观测）的开销
+- 实验 1–3 的压测客户端是原生 grpc-java，不含客户端 starter 的开销；实验 4 专门测它，并且看的是**客户端自己的 CPU**
 - 多机、真实 k8s、Aeron 都没有覆盖
 
 ## 结构
@@ -78,7 +80,8 @@ java -cp ss-benchmark/target/classes men.sbb8.benchmark.Summarize 本次结果.t
 |---|---|
 | `src/main/java/.../Echo` | 空处理器的服务定义，Spring 版和原生版共用 |
 | `.../RawServer`、`SpringServer` | 对照组（原生 grpc-java）和使用 starter 的服务端 |
-| `.../BenchClient` | 闭环压测客户端：预热、分窗口测量、统计延迟分位数和服务端 CPU |
+| `.../BenchClient` | 闭环压测客户端：预热、分窗口测量、统计延迟分位数、服务端和客户端自己的 CPU；`--client raw/deadline/spring` 选择连接的创建方式 |
+| `.../SpringChannels` | 用 ss-grpc-client-starter（Spring gRPC 客户端、观测、指标、追踪）创建压测连接，线程模型与原生一致 |
 | `.../Summarize` | 把结果汇总成表格，可与基线对比 |
-| `bin/` | `run-all.sh`（三个实验）、`check-flags.sh`、`lib.sh`（公共函数） |
+| `bin/` | `run-all.sh`（实验 1–3）、`run-client.sh`（实验 4）、`check-flags.sh`、`lib.sh`（公共函数） |
 | `baselines/` | 历史基线的原始结果，文件名带日期和机器 |

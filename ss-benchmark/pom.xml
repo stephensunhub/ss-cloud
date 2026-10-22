@@ -9,7 +9,7 @@
     </parent>
     <artifactId>ss-benchmark</artifactId>
     <name>ss-benchmark</name>
-    <description>框架开销基准（不是系统容量测试）：用空处理器测 ss-grpc-server-starter 的开销，不参与默认构建，-Pbenchmark 启用</description>
+    <description>框架开销基准（不是系统容量测试）：用空处理器测 ss-grpc-server-starter 和 ss-grpc-client-starter 的开销，不参与默认构建，-Pbenchmark 启用</description>
 
     <properties>
         <!-- 内部工具，不发布 -->
@@ -20,6 +20,10 @@
         <dependency>
             <groupId>men.sbb8</groupId>
             <artifactId>ss-grpc-server-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>men.sbb8</groupId>
+            <artifactId>ss-grpc-client-starter</artifactId>
         </dependency>
 
         <dependency>
