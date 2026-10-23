@@ -84,6 +84,12 @@
             <artifactId>mybatis</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- 只用来识别下游 gRPC 的 UNAVAILABLE（见 GrpcStatuses）；不引入 gRPC 的应用不受影响 -->
+        <dependency>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-api</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

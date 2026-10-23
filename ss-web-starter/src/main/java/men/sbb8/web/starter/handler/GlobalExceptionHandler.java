@@ -186,7 +186,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 兜底。Spring MVC 自带的 404/405/415 等异常实现了 {@link ErrorResponse}，沿用其状态码；其余按 500 处理
+     * 兜底。Spring MVC 自带的 404/405/415 等异常实现了 {@link ErrorResponse}，沿用其状态码；
+     * 下游 gRPC 服务不可达（{@code UNAVAILABLE}）按 502；其余按 500 处理
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleException(Exception e) {
@@ -196,6 +197,12 @@ public class GlobalExceptionHandler {
             HttpStatus resolved = HttpStatus.resolve(status.value());
             String code = resolved == null ? CommonCode.SYSTEM_ERROR.name() : resolved.name();
             return error(status, code, errorResponse.getBody().getDetail());
+        }
+        if (GrpcStatuses.isUnavailable(e)) {
+            // 下游 gRPC 服务连不上（宕机、地址解析失败、连接中断），和 HTTP 下游连不上一致返回 502。
+            // 故障会成批出现，只打一行 WARN，不带堆栈
+            log.warn("下游 gRPC 不可达: {}", e.getMessage());
+            return error(HttpStatus.BAD_GATEWAY, HttpStatus.BAD_GATEWAY.name(), "下游服务异常");
         }
         log.error("未知异常", e);
         return error(HttpStatus.INTERNAL_SERVER_ERROR, CommonCode.SYSTEM_ERROR.name(), CommonCode.SYSTEM_ERROR.getMsg());

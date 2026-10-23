@@ -50,6 +50,7 @@ Resp<Order> get(@PathVariable long id) {
 | Spring MVC 自己的 404 / 405 / 415 等 | 沿用其状态码 | 状态名，如 `NOT_FOUND` |
 | 下游返回了错误响应（`RemoteCallException`） | 下游业务错误（4xx 且带业务码）透传；其余 502 | 透传的业务码 / `BAD_GATEWAY` |
 | 下游根本没有响应：地址解析失败、连接被拒、无可用实例、超时 | 超时 504，其余 502；只打一行 WARN，不带堆栈 | `GATEWAY_TIMEOUT` / `BAD_GATEWAY` |
+| 下游 gRPC 服务不可达（`StatusRuntimeException`，状态 `UNAVAILABLE`，裸的或被 `GrpcRemoteException` 包装的都算） | 502；只打一行 WARN，不带堆栈。其它 gRPC 状态仍按未知异常 500。类路径上没有 grpc-api 时不生效 | `BAD_GATEWAY` |
 | 其他未知异常 | 500，不暴露细节 | `SYSTEM_ERROR` |
 
 - 应用自己的 `@RestControllerAdvice` 优先于 starter 的处理（starter 的优先级最低），可以覆盖其中任何一项
