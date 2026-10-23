@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
- * 下游 gRPC 服务不可达（UNAVAILABLE）：和 HTTP 下游连不上一致返回 502，只打一行 WARN，不带堆栈；
- * 其它 gRPC 状态不受影响，仍是未知异常 500。
+ * 下游 gRPC 服务不可达（UNAVAILABLE）返回 502，超过 deadline（DEADLINE_EXCEEDED）返回 504，和 HTTP 下游一致；
+ * 只打一行 WARN，不带堆栈；其它 gRPC 状态不受影响，仍是未知异常 500。
  */
 class GrpcUnavailableTest {
 
@@ -67,8 +67,23 @@ class GrpcUnavailableTest {
     }
 
     @Test
+    void deadlineExceededIs504() {
+        ResponseEntity<?> response = new GlobalExceptionHandler()
+                .handleException(status(Status.DEADLINE_EXCEEDED.withDescription("deadline exceeded after 4.9s")));
+        assertEquals(HttpStatus.GATEWAY_TIMEOUT, response.getStatusCode());
+        assertEquals("GATEWAY_TIMEOUT", body(response).getCode());
+        assertEquals("下游服务超时", body(response).getMsg());
+    }
+
+    @Test
+    void wrappedDeadlineExceededIs504() {
+        RuntimeException wrapped = new RuntimeException("调用下游失败", status(Status.DEADLINE_EXCEEDED));
+        assertEquals(HttpStatus.GATEWAY_TIMEOUT, new GlobalExceptionHandler().handleException(wrapped).getStatusCode());
+    }
+
+    @Test
     void otherGrpcStatusesStayInternalServerError() {
-        for (Status other : new Status[]{Status.INTERNAL, Status.DEADLINE_EXCEEDED, Status.NOT_FOUND, Status.UNKNOWN}) {
+        for (Status other : new Status[]{Status.INTERNAL, Status.NOT_FOUND, Status.UNKNOWN, Status.PERMISSION_DENIED}) {
             ResponseEntity<?> response = new GlobalExceptionHandler().handleException(status(other));
             assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode(), other.toString());
             assertEquals("SYSTEM_ERROR", body(response).getCode());
@@ -84,11 +99,14 @@ class GrpcUnavailableTest {
 
     @Test
     void oneWarnLineWithoutStackTrace() {
-        new GlobalExceptionHandler().handleException(status(Status.UNAVAILABLE));
-        assertEquals(1, appender.list.size());
-        ILoggingEvent event = appender.list.get(0);
-        assertEquals(Level.WARN, event.getLevel());
-        assertNull(event.getThrowableProxy(), "下游宕机时会成批出现，不应每个都带堆栈");
+        for (Status failure : new Status[]{Status.UNAVAILABLE, Status.DEADLINE_EXCEEDED}) {
+            appender.list.clear();
+            new GlobalExceptionHandler().handleException(status(failure));
+            assertEquals(1, appender.list.size(), failure.toString());
+            ILoggingEvent event = appender.list.get(0);
+            assertEquals(Level.WARN, event.getLevel());
+            assertNull(event.getThrowableProxy(), "下游宕机 / 抖动时会成批出现，不应每个都带堆栈");
+        }
     }
 
     @Test
@@ -98,5 +116,10 @@ class GrpcUnavailableTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
         ProblemDetail problem = assertInstanceOf(ProblemDetail.class, response.getBody());
         assertEquals("BAD_GATEWAY", problem.getProperties().get("code"));
+
+        ResponseEntity<?> timeout = new GlobalExceptionHandler(SsWebProperties.ErrorFormat.PROBLEM_DETAIL)
+                .handleException(status(Status.DEADLINE_EXCEEDED));
+        assertEquals(HttpStatus.GATEWAY_TIMEOUT, timeout.getStatusCode());
+        assertEquals("GATEWAY_TIMEOUT", assertInstanceOf(ProblemDetail.class, timeout.getBody()).getProperties().get("code"));
     }
 }
