@@ -119,6 +119,14 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
 - 这些处理只作用于 `@HttpExchange` 客户端，不影响应用自己创建的 `RestClient`
 - 用户头只在请求线程内才能透传；链路追踪的上下文会自动延续到下游
 
+## 静态取 Bean
+
+`SpringBeans.getBean(...)` 给无法注入的地方使用（MyBatis 的 `TypeHandler`、静态方法、框架反射创建的对象）；能注入的地方直接注入。
+
+- 只能取已有的 Bean，不提供运行时注册 Bean（原生镜像里运行时新增的 Bean 定义没有反射元数据）
+- 容器关闭时释放；多个容器并存（测试、父子容器）时用最后启动且仍在运行的那个
+- 容器未启动或已关闭时抛 `IllegalStateException`；这是进程级全局状态，业务代码里能注入就不要用
+
 ## JSON 与时间格式
 
 - `JacksonUtils`：给无法注入 Bean 的地方使用的静态门面（`toJson`、`fromJson`、`readTree`、`convert` 等），

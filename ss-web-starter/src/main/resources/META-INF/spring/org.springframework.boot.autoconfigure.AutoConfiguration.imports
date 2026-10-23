@@ -3,3 +3,4 @@ men.sbb8.web.starter.config.SsHttpClientAutoConfiguration
 men.sbb8.web.starter.config.SsJacksonAutoConfiguration
 men.sbb8.web.starter.redis.SsRedisAutoConfiguration
 men.sbb8.web.starter.config.SsTaskAutoConfiguration
+men.sbb8.web.starter.config.SsSpringBeansAutoConfiguration
