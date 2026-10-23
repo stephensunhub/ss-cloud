@@ -90,7 +90,7 @@ class ClientConfig {
 
 ```yaml
 spring.http.serviceclient.wallet.base-url: http://wallet:8080
-ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* 头透传给这些分组，只用于内部服务
+ss.web.client.propagate-user-headers: all       # 默认 all：所有分组都透传 X-User-* 头；有第三方接口时改成只列内部服务的分组，如 wallet,order
 ```
 
 - 非 2xx 响应统一转成 `RemoteCallException`（带 `status`、下游的 `code` / `remoteMsg`、原始响应体，最多读 64KB）；
@@ -118,7 +118,19 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
   它们会各查一次（早先实测过：5 个并发发出了 5 次查询，没有合并）。Consul 的实际请求量在 5 秒缓存下没有测过。
   按服务对故障的容忍度调整；这个值没有在本 starter 里改默认，由应用决定
 - 这些处理只作用于 `@HttpExchange` 客户端，不影响应用自己创建的 `RestClient`
-- 用户头只在请求线程内才能透传；链路追踪的上下文会自动延续到下游
+- **用户头透传的规则**（`ss.web.client.propagate-user-headers`，默认 `all`：所有分组都透传；改成分组名列表则只有列出的分组透传。
+  **调用第三方接口的分组不要透传**，会把用户标识发出去，此时不要用 `all`，列出内部服务的分组；`all` 是保留值，不要当分组名）：
+  - 透传 6 个头：`X-Channel-Id`、`X-User-Id`、`X-User-Name`、`X-Client`、`X-User-Language`、`X-Request-Ip`；
+    当前请求里没有的头不补，调用方在 `@HttpExchange` 方法上显式设置的同名头不覆盖
+  - **`X-Request-Ip` 缺失（或为空白）时透传 `0.0.0.0`**，包括当前没有请求的场景（定时任务等），下游总能拿到一个 IP 值；
+    其它头缺失则不补。下游要的是用户真实 IP 就读 `UserInfo.ip()`，不要用 `WebUtils.getRemoteIp()`（那是上游服务的地址）
+  - **异步线程也透传**：提交任务时在请求线程里复制头的值（不持有请求对象，请求结束后仍然有效），执行时在异步线程里恢复。
+    Boot 的 `@Async` 线程池（`spring.task.execution.propagate-context`，starter 默认开启）自动带上；
+    **自建线程池、`CompletableFuture` 默认池、`new Thread` 不会自动带**，需要包一层：
+    `ContextSnapshotFactory.builder().build().captureAll().wrap(任务)`（`Runnable` / `Callable` 都可以）
+  - 不透传 `Authorization`、`Cookie`、`X-Forwarded-For` 等其它头；`traceparent` 由链路追踪自动带，所有分组都带，不受上面的配置影响
+  - 这套规则只作用于 `@HttpExchange`；gRPC 不会自动带这些头
+- 链路追踪的上下文会自动延续到下游
 
 ## 静态取 Bean
 
@@ -158,7 +170,7 @@ ss.web.client.propagate-user-headers: wallet    # 把当前请求的 X-User-* �
 |---|---|---|
 | `ss.web.error-format` | `resp` | 错误响应格式：`resp` 或 `problem-detail` |
 | `ss.web.user-info.required` | `false` | 缺少 `X-User-Id` 时是否返回 401 |
-| `ss.web.client.propagate-user-headers` | 空 | 需要透传用户头的客户端分组名 |
+| `ss.web.client.propagate-user-headers` | `all` | 透传用户头的客户端分组名；`all` 表示所有分组，否则只透传列出的分组 |
 | `ss.web.open-api.title` | `spring.application.name` | 接口文档标题 |
 | `ss.web.open-api.description` | `<标题> 接口文档` | 接口文档描述 |
 | `ss.web.open-api.version` | `v1` | 接口文档版本 |

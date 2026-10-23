@@ -74,10 +74,21 @@ public class SsWebProperties {
     public static class Client {
 
         /**
-         * 需要透传当前用户请求头（X-User-Id 等）的客户端分组名，仅用于调用内部服务。
-         * 默认不透传，避免把用户标识发给第三方接口
+         * 透传分组名，取这个值表示所有 {@code @HttpExchange} 客户端分组都透传
          */
-        private List<String> propagateUserHeaders = List.of();
+        public static final String ALL = "all";
+
+        /**
+         * 需要透传当前用户请求头（X-User-Id 等）的客户端分组名；默认 {@code all}，所有分组都透传。
+         * 会把用户标识发给该分组的下游，所以调用第三方接口的分组不要透传：此时列出需要透传的内部服务分组，不要用 {@code all}。
+         * {@code all} 是保留值，不要用作分组名
+         */
+        private List<String> propagateUserHeaders = List.of(ALL);
+
+        public boolean propagatesTo(String group) {
+            return propagateUserHeaders.stream()
+                    .anyMatch(name -> ALL.equalsIgnoreCase(name.trim()) || name.trim().equals(group));
+        }
 
     }
 
