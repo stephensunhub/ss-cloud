@@ -69,6 +69,25 @@ class RedisSerializationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void jdkImmutableCollectionsAtTheTopLevelRoundTrip() {
+        runner.run(ctx -> {
+            RedisSerializer<Object> serializer = ctx.getBean("ssRedisJsonSerializer", RedisSerializer.class);
+            // 这些类型是 final 的，不做处理时最外层没有 @class，读回来报 missing type id property '@class'
+            assertEquals(Map.of("name", "stephen", "age", 18), serializer.deserialize(serializer.serialize(Map.of("name", "stephen", "age", 18))));
+            assertEquals(Map.of("k", 1), serializer.deserialize(serializer.serialize(Map.of("k", 1))));
+            assertEquals(List.of(1, 2), serializer.deserialize(serializer.serialize(List.of(1, 2))));
+            assertEquals(java.util.Set.of(3), serializer.deserialize(serializer.serialize(java.util.Set.of(3))));
+            assertEquals(Map.of("k", 1), serializer.deserialize(serializer.serialize(java.util.Collections.singletonMap("k", 1))));
+            // unmodifiableMap 不处理会读成带 @class 键的错误数据
+            assertEquals(Map.of("k", 1), serializer.deserialize(
+                    serializer.serialize(java.util.Collections.unmodifiableMap(new HashMap<>(Map.of("k", 1))))));
+            // 嵌套的本来就没问题，也要保持
+            assertEquals(Map.of("x", List.of(1)), serializer.deserialize(serializer.serialize(new HashMap<>(Map.of("x", List.of(1))))));
+        });
+    }
+
+    @Test
     void rejectsTypesOutsideAllowList() {
         runner.run(ctx -> {
             RedisSerializer<Object> serializer = ctx.getBean("ssRedisJsonSerializer", RedisSerializer.class);

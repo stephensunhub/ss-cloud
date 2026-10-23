@@ -35,6 +35,7 @@ import java.util.UUID;
  *     <li>类型白名单：只允许本项目包与 java.time、集合、Map、数字、UUID、Date，防止反序列化任意类</li>
  *     <li>集合、Map 里的 null 元素原样保留，不应用全局的 NON_NULL</li>
  * </ul>
+ * 最外层的 {@code Map.of}、{@code List.of} 等 JDK 内部集合写入前会换成普通集合（见 {@link RootCollectionNormalizingSerializer}）。
  * 需要缓存其他包下的类型时，自行提供 {@code redisTemplate} Bean 覆盖即可。
  *
  * @author Stephen
@@ -46,7 +47,7 @@ public class SsRedisAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(name = "ssRedisJsonSerializer")
     public RedisSerializer<Object> ssRedisJsonSerializer(JsonMapper jsonMapper) {
-        return GenericJacksonJsonRedisSerializer.builder(jsonMapper::rebuild)
+        GenericJacksonJsonRedisSerializer json = GenericJacksonJsonRedisSerializer.builder(jsonMapper::rebuild)
                 .enableDefaultTyping(BasicPolymorphicTypeValidator.builder()
                         .allowIfSubType("men.sbb8.")
                         .allowIfSubType("java.time.")
@@ -60,6 +61,7 @@ public class SsRedisAutoConfiguration {
                 .customize(builder -> builder.changeDefaultPropertyInclusion(
                         incl -> incl.withContentInclusion(JsonInclude.Include.ALWAYS)))
                 .build();
+        return new RootCollectionNormalizingSerializer(json);
     }
 
     @Bean
