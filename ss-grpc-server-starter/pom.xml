@@ -26,12 +26,6 @@
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
         </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-
         <!-- 集成测试要同时起服务端和客户端；服务端 starter 本身不依赖客户端 -->
         <dependency>
             <groupId>men.sbb8</groupId>

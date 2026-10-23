@@ -98,6 +98,15 @@
         </profile>
     </profiles>
 
+    <dependencies>
+        <!-- 仅编译期使用（注解处理器）：provided 不进运行时、不传递；写在这里，所有子模块自动继承，不用各自声明 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
     <build>
         <pluginManagement>
             <plugins>
