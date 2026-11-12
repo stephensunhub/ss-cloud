@@ -1,7 +1,7 @@
 # ss-cloud
 
 微服务的"规范 starter"集合：引入依赖，服务就按统一约定运行，不需要逐个项目自定义。
-基于 Spring Boot 4.1.1、JDK 25、Jackson 3；本 POM 是所有模块的父 POM，统一管理 Spring Boot、Spring Cloud BOM
+基于 Spring Boot 4.1.2、JDK 25、Jackson 3；本 POM 是所有模块的父 POM，统一管理 Spring Boot、Spring Cloud BOM
 和内部模块的版本。
 
 ## 模块

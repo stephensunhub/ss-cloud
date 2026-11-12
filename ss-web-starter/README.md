@@ -14,7 +14,7 @@ HTTP 声明式客户端（`@HttpExchange`）、Redis JSON 序列化、监控与�
 </dependency>
 ```
 
-要求 JDK 25、Spring Boot 4.1.1。默认配置放在 `META-INF/ss-web-defaults.yaml`，以**最低优先级**加载，
+要求 JDK 25、Spring Boot 4.1.2。默认配置放在 `META-INF/ss-web-defaults.yaml`，以**最低优先级**加载，
 应用的 `application.yml`、环境变量、命令行都可以覆盖。
 
 ## 统一响应与异常
