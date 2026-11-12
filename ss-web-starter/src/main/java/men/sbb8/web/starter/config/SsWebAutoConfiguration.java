@@ -3,6 +3,7 @@ package men.sbb8.web.starter.config;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import men.sbb8.web.starter.dto.UserInfo;
+import men.sbb8.web.starter.filter.RequestTimeFilter;
 import men.sbb8.web.starter.handler.GlobalExceptionHandler;
 import men.sbb8.web.starter.resolver.UserInfoArgumentResolver;
 import org.jspecify.annotations.NonNull;
@@ -13,8 +14,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -34,6 +37,14 @@ public class SsWebAutoConfiguration {
     @ConditionalOnMissingBean
     public GlobalExceptionHandler globalExceptionHandler(SsWebProperties properties) {
         return new GlobalExceptionHandler(properties.getErrorFormat());
+    }
+
+    /** 记下请求到达时间，供信封 Resp 的 requestTime 用；排在最前面，时间才是「到达」的时间 */
+    @Bean
+    public FilterRegistrationBean<RequestTimeFilter> ssRequestTimeFilter() {
+        FilterRegistrationBean<RequestTimeFilter> registration = new FilterRegistrationBean<>(new RequestTimeFilter());
+        registration.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return registration;
     }
 
     @Bean

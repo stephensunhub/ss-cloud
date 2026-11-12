@@ -102,13 +102,13 @@ class ConventionFixesTest {
     void openApiDescribesRespReturnTypes() throws Exception {
         String docs = mvc.perform(get("/v3/api-docs")).andReturn().getResponse().getContentAsString();
         var root = JacksonUtils.readTree(docs);
-        // 控制器返回 Resp<T>，文档里就是带 code / msg / data / traceId 的结构
+        // 控制器返回 Resp<T>，文档里就是带 code / msg / data / traceId / requestTime / responseTime 的结构
         var content = root.at("/paths/~1obj/get/responses/200/content");
         String ref = content.properties().iterator().next().getValue().path("schema").path("$ref").asString();
         var schema = root.at("/components/schemas/" + ref.substring(ref.lastIndexOf('/') + 1));
         var properties = new java.util.TreeSet<String>();
         schema.path("properties").propertyNames().forEach(properties::add);
-        assertEquals(java.util.Set.of("code", "msg", "data", "traceId"), properties);
+        assertEquals(java.util.Set.of("code", "msg", "data", "traceId", "requestTime", "responseTime"), properties);
         // UserInfo 来自请求头，不是请求参数
         assertEquals(0, root.at("/paths/~1me/get").path("parameters").size());
     }

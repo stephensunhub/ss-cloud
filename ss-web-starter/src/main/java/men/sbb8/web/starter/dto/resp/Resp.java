@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import men.sbb8.web.starter.error.BusinessException;
 import men.sbb8.web.starter.error.CommonCode;
+import men.sbb8.web.starter.utils.RequestTime;
 import org.slf4j.MDC;
 
 /**
@@ -28,6 +29,12 @@ public class Resp<T> {
     @Schema(title = "分布式日志ID")
     private String traceId;
 
+    @Schema(title = "服务收到请求的时间，毫秒时间戳的字符串")
+    private String requestTime;
+
+    @Schema(title = "服务生成响应的时间，毫秒时间戳的字符串")
+    private String responseTime;
+
 
     public Resp() {
     }
@@ -38,6 +45,10 @@ public class Resp<T> {
         this.msg = msg;
         // Micrometer Tracing / OpenTelemetry 桥接会把 traceId 写入 MDC，避免对 OTel 的硬依赖
         this.traceId = MDC.get("traceId");
+        // 请求到达时间由 RequestTimeFilter 记在请求属性里；不在请求线程里构造时两个时间相同
+        long now = System.currentTimeMillis();
+        this.responseTime = String.valueOf(now);
+        this.requestTime = String.valueOf(RequestTime.currentOr(now));
     }
 
     /**
