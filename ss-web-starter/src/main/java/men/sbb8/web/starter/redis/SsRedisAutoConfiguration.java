@@ -1,6 +1,7 @@
 package men.sbb8.web.starter.redis;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -10,7 +11,9 @@ import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.cache.autoconfigure.RedisCacheManagerBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -21,7 +24,9 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
@@ -84,13 +89,31 @@ public class SsRedisAutoConfiguration {
      */
     @Configuration(proxyBeanMethods = false)
     @ConditionalOnClass({RedisCacheManager.class, RedisCacheManagerBuilderCustomizer.class})
-    static class RedisCacheConfiguration {
+    static class SsRedisCacheConfiguration {
 
         @Bean
         RedisCacheManagerBuilderCustomizer ssRedisCacheValueSerializer(
-                @Qualifier("ssRedisJsonSerializer") RedisSerializer<Object> ssRedisJsonSerializer) {
-            return builder -> builder.cacheDefaults(builder.cacheDefaults().serializeValuesWith(
-                    RedisSerializationContext.SerializationPair.fromSerializer(ssRedisJsonSerializer)));
+                @Qualifier("ssRedisJsonSerializer") RedisSerializer<Object> ssRedisJsonSerializer,
+                ObjectProvider<CacheTtlResolver> ttlResolvers) {
+            return builder -> {
+                RedisCacheConfiguration defaults = builder.cacheDefaults().serializeValuesWith(
+                        RedisSerializationContext.SerializationPair.fromSerializer(ssRedisJsonSerializer));
+                List<CacheTtlResolver> resolvers = ttlResolvers.orderedStream().toList();
+                if (!resolvers.isEmpty()) {
+                    // 应用的 CacheTtlResolver 按缓存项决定过期时间；都返回 null 时用默认值（spring.cache.redis.time-to-live）
+                    RedisCacheWriter.TtlFunction fallback = defaults.getTtlFunction();
+                    defaults = defaults.entryTtl((key, value) -> {
+                        for (CacheTtlResolver resolver : resolvers) {
+                            Duration ttl = resolver.resolve(key, value);
+                            if (ttl != null) {
+                                return ttl;
+                            }
+                        }
+                        return fallback.getTimeToLive(key, value);
+                    });
+                }
+                builder.cacheDefaults(defaults);
+            };
         }
     }
 }

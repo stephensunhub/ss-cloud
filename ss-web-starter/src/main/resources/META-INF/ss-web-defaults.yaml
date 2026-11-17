@@ -10,6 +10,11 @@ spring:
       enabled: true
   lifecycle:
     timeout-per-shutdown-phase: 30s
+  cache:
+    redis:
+      # @Cacheable 缓存项的默认过期时间（Boot 默认永不过期，忘了配置的缓存会一直占着 Redis）；
+      # 个别缓存项要不同的时间，注册 CacheTtlResolver Bean
+      time-to-live: 30m
   task:
     execution:
       # @Async 等异步任务里的日志和链路带上调用方的 traceId（Boot 默认关闭）

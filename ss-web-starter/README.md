@@ -163,13 +163,23 @@ ss.web.client.propagate-user-headers: all       # 默认 all：所有分组都�
 - 为防止反序列化任意类，有类型白名单：`men.sbb8.` 包、`java.time`、集合、`Map`、数字、`UUID`、`Date`。
   要缓存其他包下的类型，自己提供 `redisTemplate`（或 `ssRedisJsonSerializer`）覆盖
 - 同时引入 `spring-boot-starter-cache` 时，`@Cacheable` 的缓存值同样是 JSON，`spring.cache.redis.*` 照常生效
+- **缓存默认 30 分钟过期**（`spring.cache.redis.time-to-live: 30m`，Boot 默认是永不过期；可在 `application.yml` 覆盖）。
+  个别缓存项要不同的过期时间，注册 `CacheTtlResolver` Bean，按 key 和值决定，返回 `null` 用默认值，`Duration.ZERO` 表示永不过期：
+  ```java
+  @Bean
+  CacheTtlResolver ttlResolver() {
+      return (key, value) -> value instanceof VipUser ? Duration.ofHours(6) : null;
+  }
+  ```
+  `key` 是 `@Cacheable` 解析出的原始 key 对象，不是带缓存名前缀的字符串。注解没有"每次调用单独指定过期时间"的能力，
+  要在调用时才知道过期时间的，直接用 `redisTemplate.opsForValue().set(key, value, ttl)`
 
 ### 使用约定
 
 - **能放进 Redis 的类型受白名单限制**（见上）：自己的类要在 `men.sbb8.` 包下，否则读回来会被拒绝；缓存其他包的类型，
   先想清楚是不是真的要缓存它，再按上面的办法覆盖序列化器
 - **类型和字段变化会让旧数据读不回来**（value 里带 `@class` 和字段）：改了缓存对象的类名、包名或字段后，旧 key 要么等过期，要么换一个 key 前缀
-- **缓存一律设置过期时间**：`@Cacheable` 用 `spring.cache.redis.time-to-live`；直接用 `redisTemplate` 写入时带过期时间，不要写永不过期的 key
+- **缓存要有过期时间**：`@Cacheable` 默认 30 分钟（见上）；直接用 `redisTemplate` 写入时自己带过期时间，不要写永不过期的 key
 - 最外层的 `Map.of` / `List.of` / `Set.of` 等 JDK 内部集合写入前会换成普通集合，读回来是 `LinkedHashMap` / `ArrayList` / `LinkedHashSet`，不要依赖它们不可变；嵌套在对象或集合里的不受影响
 - 需要互斥用 `DistributedLock`，不要用 `setIfAbsent` 自己拼锁（没有续期、没有重入、释放时容易误删别人的锁）
 
@@ -228,6 +238,7 @@ Order order = distributedLock.call("order:" + orderId, Duration.ofSeconds(3), ()
 |---|---|---|
 | `ss.web.error-format` | `resp` | 错误响应格式：`resp` 或 `problem-detail` |
 | `ss.web.wrap-response.base-packages` | 空 | 这些包（含子包）里的控制器，成功返回值自动包装成 `Resp`；空表示不包装。`String`、`byte[]`、`Resource`、流、已是 `Resp` 的和错误响应不包装 |
+| `spring.cache.redis.time-to-live` | `30m` | `@Cacheable` 缓存项的默认过期时间（Boot 的配置，starter 改了默认值）；按缓存项调整见 `CacheTtlResolver` |
 | `ss.web.user-info.required` | `false` | 缺少 `X-User-Id` 时是否返回 401 |
 | `ss.web.client.propagate-user-headers` | `all` | 透传用户头的客户端分组名；`all` 表示所有分组，否则只透传列出的分组 |
 | `ss.web.open-api.title` | `spring.application.name` | 接口文档标题 |

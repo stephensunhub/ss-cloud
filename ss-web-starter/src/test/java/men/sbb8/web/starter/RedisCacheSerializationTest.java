@@ -1,6 +1,7 @@
 package men.sbb8.web.starter;
 
 import men.sbb8.web.starter.config.SsJacksonAutoConfiguration;
+import men.sbb8.web.starter.redis.CacheTtlResolver;
 import men.sbb8.web.starter.redis.SsRedisAutoConfiguration;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -48,5 +49,43 @@ class RedisCacheSerializationTest {
             assertTrue(json.contains("2026-01-02T03:04:05Z"), json);
             assertEquals(item, defaults.getValueSerializationPair().read(ByteBuffer.wrap(json.getBytes())));
         });
+    }
+
+    @Test
+    void withoutResolverTheDefaultTtlApplies() {
+        runner.run(ctx -> {
+            RedisCacheManager.RedisCacheManagerBuilder builder =
+                    RedisCacheManager.builder(Mockito.mock(RedisConnectionFactory.class))
+                            .cacheDefaults(RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofMinutes(30)));
+            ctx.getBean(RedisCacheManagerBuilderCustomizer.class).customize(builder);
+
+            assertEquals(Duration.ofMinutes(30), builder.cacheDefaults().getTtlFunction().getTimeToLive("k", "v"));
+        });
+    }
+
+    @Test
+    void resolverDecidesTtlPerEntryAndFallsBackToTheDefault() {
+        runner.withBean(CacheTtlResolver.class, () -> (key, value) -> {
+                    if (key instanceof String s && s.startsWith("vip:")) {
+                        return Duration.ofHours(6);
+                    }
+                    if (value instanceof Item) {
+                        return Duration.ZERO;
+                    }
+                    return null;
+                })
+                .run(ctx -> {
+                    RedisCacheManager.RedisCacheManagerBuilder builder =
+                            RedisCacheManager.builder(Mockito.mock(RedisConnectionFactory.class))
+                                    .cacheDefaults(RedisCacheConfiguration.defaultCacheConfig().entryTtl(Duration.ofMinutes(30)));
+                    ctx.getBean(RedisCacheManagerBuilderCustomizer.class).customize(builder);
+                    var ttl = builder.cacheDefaults().getTtlFunction();
+
+                    assertEquals(Duration.ofHours(6), ttl.getTimeToLive("vip:1", "x"));
+                    assertEquals(Duration.ZERO, ttl.getTimeToLive("a", new Item("a", Instant.EPOCH)), "ZERO 表示永不过期");
+                    assertEquals(Duration.ofMinutes(30), ttl.getTimeToLive("other", "x"), "都返回 null 时用默认值");
+                    // 值序列化仍然是 JSON
+                    assertTrue(builder.cacheDefaults().getValueSerializationPair().write(new Item("a", Instant.EPOCH)).remaining() > 0);
+                });
     }
 }
