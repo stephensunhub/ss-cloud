@@ -321,7 +321,7 @@ OTLP 导出（含服务名和请求路径）、真实 Redis 读写与 `@Cacheabl
 业务异常 422、未知异常 500、参数校验失败 400、不存在的路径 404、下游失败 502，都是 `application/problem+json`，
 带 `code`、`detail`、`title`、`status`、`instance`、`traceId`；成功响应仍是 `Resp`。
 
-starter 自己需要的提示（默认配置文件、`aot.factories`）已内置。**应用代码**需要注意，这是 GraalVM 的限制，JVM 模式不需要：
+starter 自己需要的提示（`aot.factories`、Netty 的反射提示）已内置；默认配置（`application.yaml`）由 Boot 自己的配置加载读取，不需要额外提示，已在原生镜像上验证三层优先级（starter 默认值 < 应用 `application.yml` < `application-<profile>.yml`）。**应用代码**需要注意，这是 GraalVM 的限制，JVM 模式不需要：
 
 - 只通过 `JacksonUtils.fromJson(json, Xxx.class)` 反序列化、没有控制器引用的类型，要自己注册反射提示，
   如 `@RegisterReflectionForBinding(Xxx.class)`；漏注册时启动正常，调用时报 "Record components not available for record class"

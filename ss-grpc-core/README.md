@@ -47,8 +47,13 @@ logging:
 用生产 profile（见"生产环境配置"）编译出的镜像里，gRPC 反射服务已关闭（用 `grpcurl` 实测：`list` 返回 "server does not support the reflection API"，
 而普通编译的镜像能列出所有服务；健康检查等其他功能不受影响）。要关闭反射，必须在**编译时**激活生产 profile，见下文。
 
-starter 已内置所需提示：默认配置文件，以及 grpc-java 通过反射使用的 `LongAdder`（Boot / Spring gRPC 没有注册它，
+starter 已内置所需提示：grpc-java 通过反射使用的 `LongAdder`（Boot / Spring gRPC 没有注册它，
 缺了会在 gRPC 服务端 / 客户端启动时失败）。应用自己的 protobuf 消息和 gRPC 服务由 Spring gRPC 的 AOT 处理注册。
+
+默认配置（`application.yaml`）由 Spring Boot 自己的配置加载读取，Boot 已为 `application*.yml|yaml` 注册资源提示，starter 不需要再注册。
+已在原生镜像上验证（依赖 `ss-grpc-server-starter` 的示例应用，激活应用自己的生产 profile 编译）：starter 的默认值（健康检查配置、耗时桶）能读到，
+应用的 `application.yml` 能覆盖端口和连接最长存活时间，`application-<profile>.yml` 能覆盖超时、采样率、反射开关和日志格式，`:9091/metrics` 可访问。
+示例应用没有注册 gRPC 服务，所以没有验证服务端对外提供调用（这部分以前的原生镜像验证已覆盖）。
 
 
 ### 编译原生镜像的要求（已实测）
