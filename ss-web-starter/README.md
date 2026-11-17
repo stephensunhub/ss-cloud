@@ -19,7 +19,7 @@ HTTP 声明式客户端（`@HttpExchange`）、Redis JSON 序列化、监控与�
 
 ## 统一响应与异常
 
-成功响应由控制器自己决定怎么返回，starter **不会替它包装**；统一的信封 `Resp`（`{"code":"SUCCESS","msg":"成功","data":…,"traceId":"…","requestTime":"…","responseTime":"…"}`，两个时间是毫秒时间戳的字符串：服务收到请求的时间、生成响应的时间）
+成功响应由控制器自己决定怎么返回，starter **不会替它包装**；统一的信封 `Resp`（`{"code":"SUCCESS","msg":"成功","data":…,"traceId":"…","requestTime":1700000000000,"responseTime":1700000000000}`，两个时间是毫秒时间戳（数字）：服务收到请求的时间、生成响应的时间）
 用 `Resp.ok(...)` 返回，声明返回类型为 `Resp<T>`，接口文档里也就自然是这个结构：
 
 ```java

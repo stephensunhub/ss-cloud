@@ -29,11 +29,11 @@ public class Resp<T> {
     @Schema(title = "分布式日志ID")
     private String traceId;
 
-    @Schema(title = "服务收到请求的时间，毫秒时间戳的字符串")
-    private String requestTime;
+    @Schema(title = "服务收到请求的时间，毫秒时间戳")
+    private Long requestTime;
 
-    @Schema(title = "服务生成响应的时间，毫秒时间戳的字符串")
-    private String responseTime;
+    @Schema(title = "服务生成响应的时间，毫秒时间戳")
+    private Long responseTime;
 
 
     public Resp() {
@@ -47,8 +47,8 @@ public class Resp<T> {
         this.traceId = MDC.get("traceId");
         // 请求到达时间由 RequestTimeFilter 记在请求属性里；不在请求线程里构造时两个时间相同
         long now = System.currentTimeMillis();
-        this.responseTime = String.valueOf(now);
-        this.requestTime = String.valueOf(RequestTime.currentOr(now));
+        this.responseTime = now;
+        this.requestTime = RequestTime.currentOr(now);
     }
 
     /**

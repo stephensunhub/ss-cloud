@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 /**
- * 信封带 requestTime（请求到达服务的时间）和 responseTime（生成响应的时间），都是毫秒时间戳的字符串。
+ * 信封带 requestTime（请求到达服务的时间）和 responseTime（生成响应的时间），都是毫秒时间戳（数字）。
  * 成功和失败的响应都有；不在请求里构造的 Resp，requestTime 等于 responseTime
  */
 @SpringBootTest
@@ -63,9 +63,9 @@ class RespTimeFieldsTest {
         long before = System.currentTimeMillis();
         JsonNode body = call("/timed-ok");
         long after = System.currentTimeMillis();
-        assertTrue(body.get("requestTime").isString() && body.get("responseTime").isString(), "both are strings: " + body);
-        long requestTime = Long.parseLong(body.get("requestTime").asString());
-        long responseTime = Long.parseLong(body.get("responseTime").asString());
+        assertTrue(body.get("requestTime").isNumber() && body.get("responseTime").isNumber(), "both are numbers: " + body);
+        long requestTime = body.get("requestTime").asLong();
+        long responseTime = body.get("responseTime").asLong();
         assertTrue(requestTime >= before && responseTime <= after, body.toString());
         assertTrue(responseTime - requestTime >= 30, "the request time is when the request arrived, not when the body was built: " + body);
     }
@@ -75,7 +75,7 @@ class RespTimeFieldsTest {
         JsonNode body = call("/timed-fail");
         assertEquals("SOME_CODE", body.get("code").asString());
         assertNotNull(body.get("requestTime"), body.toString());
-        assertTrue(Long.parseLong(body.get("responseTime").asString()) >= Long.parseLong(body.get("requestTime").asString()));
+        assertTrue(body.get("responseTime").asLong() >= body.get("requestTime").asLong());
     }
 
     @Test
