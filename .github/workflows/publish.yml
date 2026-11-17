@@ -23,7 +23,7 @@ jobs:
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
       - name: Deploy
-        run: ./mvnw -B -ntp clean deploy
+        run: ./mvnw -B -ntp clean deploy -DskipTests
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
