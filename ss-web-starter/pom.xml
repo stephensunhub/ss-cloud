@@ -79,6 +79,12 @@
             <artifactId>spring-boot-starter-cache</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- 分布式锁：应用引入 org.redisson:redisson 后，会按 spring.data.redis.* 自动创建 RedissonClient（见 SsRedissonAutoConfiguration） -->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>jakarta.persistence</groupId>
             <artifactId>jakarta.persistence-api</artifactId>

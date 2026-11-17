@@ -237,6 +237,27 @@ starter 自己需要的提示（默认配置文件、`aot.factories`）已内置
 - 放进 Redis 的类型同样需要反射提示，并且仍受类型白名单限制（`men.sbb8.*`）
 - 原生模式下 `AOT` 在编译期固定了 Bean 和条件，不要依赖运行期改变 `@Conditional` 的属性
 
+### 分布式锁（Redisson）
+
+应用自己引入 `org.redisson:redisson` 和 `spring-boot-starter-data-redis`（starter 里都是可选依赖，Redisson 版本由父 POM 管理）后，会按 `spring.data.redis.*`
+（地址、端口、用户名、密码、database、SSL、超时）自动创建单机模式的 `RedissonClient`，不用再配一遍：
+
+```java
+RLock lock = redissonClient.getLock("order:" + orderId);
+if (lock.tryLock(3, TimeUnit.SECONDS)) {   // 不指定租期：看门狗自动续期，持有期间锁不会过期；实例宕机后锁自然过期
+    try { ... } finally { lock.unlock(); }
+}
+```
+
+- 创建时就会连接 Redis，连不上则应用启动失败；不需要时去掉依赖，或用 `spring.autoconfigure.exclude` 排除 `SsRedissonAutoConfiguration`
+- 哨兵、集群模式，或需要自定义编解码器等，自己提供 `RedissonClient` Bean 即可覆盖；
+  `SsRedissonAutoConfiguration.toConfig(DataRedisProperties)` 可以拿来在单机配置的基础上调整
+- **原生镜像：** 已用 Redisson 4.8.0 + Boot 4.1.2 + GraalVM 25.0.4 在依赖本 starter 的示例应用上实测：`RLock` 加锁解锁、
+  可重入、互斥、看门狗续期（持有 15 秒，默认 30 秒的租期被续期）、读写锁，结果与 JVM 模式一致，镜像启动 0.1 秒。Netty 的 `ReferenceCountUtil` 需要反射提示，已在 `SsWebRuntimeHints` 里注册，
+  不注册会在连接 Redis 时报 `NoClassDefFoundError: Could not initialize class io.netty.util.ReferenceCountUtil`。
+  **只验证了单机模式、默认编解码器下的锁**；哨兵/集群、`RBucket` 等数据结构、Redisson 的 Spring Cache 集成、
+  `redisson-spring-boot-starter` 都没有验证
+
 ### 编译原生镜像的要求（已实测）
 
 Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnProperty` 等属性条件决定是否创建的 Bean，

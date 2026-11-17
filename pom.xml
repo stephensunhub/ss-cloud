@@ -48,6 +48,8 @@
 
         <springdoc.version>3.1.1</springdoc.version>
         <mybatis.version>3.5.19</mybatis.version>
+        <!-- 分布式锁。已在 Boot 4.1.2 + GraalVM 25 的原生镜像上验证 RLock、可重入、看门狗续期、读写锁（需要 SsWebRuntimeHints 里的 Netty 反射提示） -->
+        <redisson.version>4.8.0</redisson.version>
     </properties>
 
     <dependencyManagement>
@@ -93,6 +95,11 @@
                 <groupId>org.mybatis</groupId>
                 <artifactId>mybatis</artifactId>
                 <version>${mybatis.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson</artifactId>
+                <version>${redisson.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

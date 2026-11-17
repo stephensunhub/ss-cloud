@@ -29,7 +29,7 @@ import java.util.Map;
  * 自动配置就被绕过了。
  */
 @SpringBootConfiguration
-@EnableAutoConfiguration
+@EnableAutoConfiguration(exclude = men.sbb8.web.starter.redis.SsRedissonAutoConfiguration.class)
 @ComponentScan(excludeFilters = {
         @ComponentScan.Filter(type = FilterType.CUSTOM, classes = {TypeExcludeFilter.class, AutoConfigurationExcludeFilter.class}),
         @ComponentScan.Filter(type = FilterType.REGEX,

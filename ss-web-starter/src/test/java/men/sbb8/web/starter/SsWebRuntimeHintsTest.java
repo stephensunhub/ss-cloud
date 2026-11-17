@@ -20,6 +20,15 @@ class SsWebRuntimeHintsTest {
     }
 
     @Test
+    void nettyReferenceCountUtilIsRegisteredForReflection() {
+        RuntimeHints hints = new RuntimeHints();
+        new SsWebRuntimeHints().registerHints(hints, getClass().getClassLoader());
+
+        assertThat(RuntimeHintsPredicates.reflection().onType(io.netty.util.ReferenceCountUtil.class)
+                .withMemberCategory(org.springframework.aot.hint.MemberCategory.INVOKE_DECLARED_METHODS)).accepts(hints);
+    }
+
+    @Test
     void registrarIsDiscoverableThroughAotFactories() {
         // 与 Spring AOT 处理时一致的发现方式：META-INF/spring/aot.factories（不是 spring.factories）
         var registrars = AotServices.factories(getClass().getClassLoader())
