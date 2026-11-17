@@ -240,19 +240,25 @@ starter 自己需要的提示（默认配置文件、`aot.factories`）已内置
 ### 分布式锁（Redisson）
 
 应用自己引入 `org.redisson:redisson` 和 `spring-boot-starter-data-redis`（starter 里都是可选依赖，Redisson 版本由父 POM 管理）后，会按 `spring.data.redis.*`
-（地址、端口、用户名、密码、database、SSL、超时）自动创建单机模式的 `RedissonClient`，不用再配一遍：
+（地址、端口、用户名、密码、database、SSL、超时）自动创建单机模式的 `RedissonClient`，不用再配一遍。
+
+业务代码注入 `DistributedLock`，**不要直接用 `RedissonClient` / `RLock`**，以后换实现（比如换成别的锁服务）只需要提供另一个 `DistributedLock` Bean：
 
 ```java
-RLock lock = redissonClient.getLock("order:" + orderId);
-if (lock.tryLock(3, TimeUnit.SECONDS)) {   // 不指定租期：看门狗自动续期，持有期间锁不会过期；实例宕机后锁自然过期
-    try { ... } finally { lock.unlock(); }
-}
+// 拿到锁就执行；等 3 秒仍拿不到则不执行，返回 false
+boolean ran = distributedLock.tryRun("order:" + orderId, Duration.ofSeconds(3), () -> payService.pay(orderId));
+
+// 拿到锁执行并返回结果；拿不到抛 LockNotAcquiredException（没捕获时按未知异常返回 500）
+Order order = distributedLock.call("order:" + orderId, Duration.ofSeconds(3), () -> orderService.create(req));
 ```
+
+接口的约定：同一个 key 跨实例互斥、可重入；持有期间锁不会因超时被抢走（执行时间不确定也安全），持有者宕机后锁自动过期；
+`action` 抛出的异常原样抛出，锁一定释放。Redisson 实现靠看门狗续期（默认 30 秒）。
 
 - 创建时就会连接 Redis，连不上则应用启动失败；不需要时去掉依赖，或用 `spring.autoconfigure.exclude` 排除 `SsRedissonAutoConfiguration`
 - 哨兵、集群模式，或需要自定义编解码器等，自己提供 `RedissonClient` Bean 即可覆盖；
   `SsRedissonAutoConfiguration.toConfig(DataRedisProperties)` 可以拿来在单机配置的基础上调整
-- **原生镜像：** 已用 Redisson 4.8.0 + Boot 4.1.2 + GraalVM 25.0.4 在依赖本 starter 的示例应用上实测：`RLock` 加锁解锁、
+- **原生镜像：** 已用 Redisson 4.8.0 + Boot 4.1.2 + GraalVM 25.0.4 在依赖本 starter 的示例应用上实测（直接用 `RLock`，`DistributedLock` 这层封装是纯 Java，没有单独在原生镜像上跑过）：加锁解锁、
   可重入、互斥、看门狗续期（持有 15 秒，默认 30 秒的租期被续期）、读写锁，结果与 JVM 模式一致，镜像启动 0.1 秒。Netty 的 `ReferenceCountUtil` 需要反射提示，已在 `SsWebRuntimeHints` 里注册，
   不注册会在连接 Redis 时报 `NoClassDefFoundError: Could not initialize class io.netty.util.ReferenceCountUtil`。
   **只验证了单机模式、默认编解码器下的锁**；哨兵/集群、`RBucket` 等数据结构、Redisson 的 Spring Cache 集成、

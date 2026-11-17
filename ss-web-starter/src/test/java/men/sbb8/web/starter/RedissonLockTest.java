@@ -1,10 +1,9 @@
 package men.sbb8.web.starter;
 
+import men.sbb8.web.starter.lock.DistributedLock;
 import men.sbb8.web.starter.redis.SsRedissonAutoConfiguration;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.redisson.api.RLock;
-import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.data.redis.autoconfigure.DataRedisAutoConfiguration;
@@ -12,10 +11,12 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -51,30 +52,43 @@ class RedissonLockTest {
     }
 
     @Test
-    void mutualExclusionAndReentrancy() {
+    void distributedLockIsExposedAndWorksAgainstRealRedis() {
         Assumptions.assumeTrue(redisAvailable(), "本机 6379 没有 Redis，跳过");
         new ApplicationContextRunner()
                 .withConfiguration(AutoConfigurations.of(DataRedisAutoConfiguration.class, SsRedissonAutoConfiguration.class))
                 .run(ctx -> {
-                    RedissonClient redisson = ctx.getBean(RedissonClient.class);
-                    RLock lock = redisson.getLock("ss-web-starter-test:lock");
-                    assertTrue(lock.tryLock(1, 10, TimeUnit.SECONDS));
-                    assertTrue(lock.tryLock(1, 10, TimeUnit.SECONDS), "同一线程可重入");
-                    assertEquals(2, lock.getHoldCount());
+                    DistributedLock locks = ctx.getBean(DistributedLock.class);
+                    String key = "ss-web-starter-test:lock";
 
-                    boolean[] otherGotIt = new boolean[1];
-                    Thread other = Thread.ofPlatform().start(() -> {
+                    // 可重入：同一线程嵌套加同一个 key
+                    assertEquals("inner", locks.call(key, Duration.ofSeconds(1),
+                            () -> locks.call(key, Duration.ofSeconds(1), () -> "inner")));
+
+                    // 互斥：持有期间别的线程拿不到，tryRun 返回 false 且不执行
+                    AtomicBoolean ran = new AtomicBoolean();
+                    AtomicBoolean otherResult = new AtomicBoolean(true);
+                    locks.run(key, Duration.ofSeconds(1), () -> {
+                        Thread other = Thread.ofPlatform().start(
+                                () -> otherResult.set(locks.tryRun(key, Duration.ofMillis(200), () -> ran.set(true))));
                         try {
-                            otherGotIt[0] = redisson.getLock("ss-web-starter-test:lock").tryLock(200, 5000, TimeUnit.MILLISECONDS);
-                        } catch (InterruptedException ignored) {
+                            other.join();
+                        } catch (InterruptedException e) {
+                            throw new IllegalStateException(e);
                         }
                     });
-                    other.join();
-                    assertFalse(otherGotIt[0], "别的线程拿不到同一把锁");
+                    assertFalse(otherResult.get());
+                    assertFalse(ran.get());
 
-                    lock.unlock();
-                    lock.unlock();
-                    assertFalse(lock.isLocked());
+                    // 释放后可以再拿到
+                    assertTrue(locks.tryRun(key, Duration.ZERO, () -> ran.set(true)));
+                    assertTrue(ran.get());
+
+                    // 业务异常原样抛出，锁照样释放
+                    assertThrows(IllegalStateException.class, () -> locks.run(key, Duration.ZERO, () -> {
+                        throw new IllegalStateException("boom");
+                    }));
+                    assertTrue(locks.tryRun(key, Duration.ZERO, () -> {
+                    }));
                 });
     }
 }
