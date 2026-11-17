@@ -13,7 +13,7 @@
 
     <groupId>men.sbb8</groupId>
     <artifactId>ss-cloud</artifactId>
-    <version>2026.10.21.0</version>
+    <version>2026.11.17.0</version>
     <packaging>pom</packaging>
     <name>ss-cloud</name>
     <description>ss-cloud 顶层 POM：统一管理 Java、Spring Boot、Spring Cloud 及第三方依赖版本</description>

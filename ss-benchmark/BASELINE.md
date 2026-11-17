@@ -10,7 +10,7 @@
 |---|---|
 | 机器 | Apple M5 Pro，18 核（6 个性能核 + 12 个能效核），64GB，接市电 |
 | JDK | OpenJDK 25.0.3（Zulu），服务端 `-Xms1g -Xmx1g`，客户端 `-Xms512m -Xmx1g`，默认 G1 |
-| 被测代码 | `ss-grpc-server-starter` 2026.10.21.0（Spring Boot 4.1.1、Spring gRPC 1.1.1、grpc-java 1.83.1） |
+| 被测代码 | `ss-grpc-server-starter` 2026.11.17.0（Spring Boot 4.1.1、Spring gRPC 1.1.1、grpc-java 1.83.1） |
 | 负载 | 客户端和服务端在**同一台机器**，各占掉十几个核；后台还有别的进程（一个虚拟机进程约占 0.3 个核、IDE、浏览器） |
 
 ## 先看结论

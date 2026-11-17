@@ -32,7 +32,7 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 <parent>
     <groupId>men.sbb8</groupId>
     <artifactId>ss-cloud</artifactId>
-    <version>2026.10.21.0</version>
+    <version>2026.11.17.0</version>
     <relativePath/>
 </parent>
 
