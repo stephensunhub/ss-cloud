@@ -17,10 +17,16 @@ public class SsWebProperties {
 
     /**
      * 错误响应的格式：resp（默认，沿用 Resp 信封）或 problem-detail（RFC 9457）。
-     * 成功响应由控制器自己决定怎么返回（用 Resp.ok(...) 包装，或直接返回对象），starter 不会替它包装
+     * 成功响应默认由控制器自己决定怎么返回（用 Resp.ok(...) 包装，或直接返回对象），starter 不会替它包装；
+     * 要自动包装见 {@code wrapResponse}
      */
     @Setter
     private ErrorFormat errorFormat = ErrorFormat.RESP;
+
+    /**
+     * 成功响应自动包装成 Resp
+     */
+    private final WrapResponse wrapResponse = new WrapResponse();
 
     /**
      * OpenAPI 文档信息，title 缺省取 spring.application.name
@@ -36,6 +42,17 @@ public class SsWebProperties {
      * HTTP Service Client（@HttpExchange 声明式客户端）
      */
     private final Client client = new Client();
+
+    @Setter
+    @Getter
+    public static class WrapResponse {
+
+        /**
+         * 控制器所在的包（含子包），这些包里的接口，成功返回值会自动包装成 Resp；默认为空，不包装任何接口。
+         * String、byte[]、Resource、流、已经是 Resp 的返回值和错误响应不会被包装
+         */
+        private List<String> basePackages = List.of();
+    }
 
     @Setter
     @Getter

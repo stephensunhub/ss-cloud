@@ -5,6 +5,7 @@ import io.swagger.v3.oas.models.info.Info;
 import men.sbb8.web.starter.dto.UserInfo;
 import men.sbb8.web.starter.filter.RequestTimeFilter;
 import men.sbb8.web.starter.handler.GlobalExceptionHandler;
+import men.sbb8.web.starter.handler.ResponseWrapAdvice;
 import men.sbb8.web.starter.resolver.UserInfoArgumentResolver;
 import org.jspecify.annotations.NonNull;
 import org.springdoc.core.utils.SpringDocUtils;
@@ -37,6 +38,13 @@ public class SsWebAutoConfiguration {
     @ConditionalOnMissingBean
     public GlobalExceptionHandler globalExceptionHandler(SsWebProperties properties) {
         return new GlobalExceptionHandler(properties.getErrorFormat());
+    }
+
+    /** 成功响应自动包装；包名运行期读取，没配置 ss.web.wrap-response.base-packages 时什么都不包装 */
+    @Bean
+    @ConditionalOnMissingBean
+    public ResponseWrapAdvice ssResponseWrapAdvice(SsWebProperties properties) {
+        return new ResponseWrapAdvice(properties.getWrapResponse().getBasePackages());
     }
 
     /** 记下请求到达时间，供信封 Resp 的 requestTime 用；排在最前面，时间才是「到达」的时间 */

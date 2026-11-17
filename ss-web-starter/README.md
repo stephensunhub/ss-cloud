@@ -174,6 +174,7 @@ ss.web.client.propagate-user-headers: all       # 默认 all：所有分组都�
 | 配置 | 默认值 | 说明 |
 |---|---|---|
 | `ss.web.error-format` | `resp` | 错误响应格式：`resp` 或 `problem-detail` |
+| `ss.web.wrap-response.base-packages` | 空 | 这些包（含子包）里的控制器，成功返回值自动包装成 `Resp`；空表示不包装。`String`、`byte[]`、`Resource`、流、已是 `Resp` 的和错误响应不包装 |
 | `ss.web.user-info.required` | `false` | 缺少 `X-User-Id` 时是否返回 401 |
 | `ss.web.client.propagate-user-headers` | `all` | 透传用户头的客户端分组名；`all` 表示所有分组，否则只透传列出的分组 |
 | `ss.web.open-api.title` | `spring.application.name` | 接口文档标题 |
