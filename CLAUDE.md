@@ -20,6 +20,18 @@ ss-cloud 是微服务的"规范 starter"集合：应用继承本 POM、按需引
 - `RedissonLockTest` 的加锁用例需要本机 6379 有 Redis，没有会自动跳过
 - 原生镜像：GraalVM 25，`SPRING_PROFILES_ACTIVE=prod ./mvnw -Pnative -DskipTests native:compile`；**必须在编译期激活目标 profile**（见下文）
 
+## 定位与边界
+
+这是**通用能力 starter**，只放"所有服务都需要、而且应该统一"的横切能力：统一响应与异常、用户上下文透传、HTTP/gRPC 客户端与错误映射、Jackson/时间格式、Redis 序列化、分布式锁、指标/追踪/健康检查、线程池与虚拟线程默认值、原生镜像支持。
+
+**不属于本仓库，不要往里加**（由业务项目自己决定和实现）：
+- 数据库访问与事务：数据源、连接池、多数据源、迁移工具、事务边界。`@Transactional` 是 Spring 标准能力，不再封装
+- 鉴权与权限：网关负责认证，starter 只透传用户头；"谁能做什么"是业务规则
+- 业务幂等的语义（幂等键取什么、重复请求怎么应答）、业务 ID 规则、审计、国际化文案
+- 消息队列：RocketMQ → Aeron 是后续的事，要做也是独立的可选模块，不放进 `ss-web-starter`
+
+判断标准：能脱离具体业务、对所有服务都成立的才进来；拿不准是不是通用能力时，先问用户。新增通用能力要写使用约定（怎么用、和事务/其他能力的先后顺序），不只是写 API，参考 README 里 Redis 和分布式锁两节的"使用约定"。
+
 ## 模块与依赖方向
 
 `ss-web-starter`（Servlet Web 服务）、`ss-grpc-server-starter`、`ss-grpc-client-starter` 是三个应用入口；`ss-grpc-core` 是 gRPC 服务端/客户端共用（错误模型 proto、Prometheus 抓取端口、追踪/监控默认配置），不直接引入；`ss-benchmark` 只测框架开销，不是容量测试。

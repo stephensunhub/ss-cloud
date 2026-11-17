@@ -164,6 +164,59 @@ ss.web.client.propagate-user-headers: all       # 默认 all：所有分组都�
   要缓存其他包下的类型，自己提供 `redisTemplate`（或 `ssRedisJsonSerializer`）覆盖
 - 同时引入 `spring-boot-starter-cache` 时，`@Cacheable` 的缓存值同样是 JSON，`spring.cache.redis.*` 照常生效
 
+### 使用约定
+
+- **能放进 Redis 的类型受白名单限制**（见上）：自己的类要在 `men.sbb8.` 包下，否则读回来会被拒绝；缓存其他包的类型，
+  先想清楚是不是真的要缓存它，再按上面的办法覆盖序列化器
+- **类型和字段变化会让旧数据读不回来**（value 里带 `@class` 和字段）：改了缓存对象的类名、包名或字段后，旧 key 要么等过期，要么换一个 key 前缀
+- **缓存一律设置过期时间**：`@Cacheable` 用 `spring.cache.redis.time-to-live`；直接用 `redisTemplate` 写入时带过期时间，不要写永不过期的 key
+- 最外层的 `Map.of` / `List.of` / `Set.of` 等 JDK 内部集合写入前会换成普通集合，读回来是 `LinkedHashMap` / `ArrayList` / `LinkedHashSet`，不要依赖它们不可变；嵌套在对象或集合里的不受影响
+- 需要互斥用 `DistributedLock`，不要用 `setIfAbsent` 自己拼锁（没有续期、没有重入、释放时容易误删别人的锁）
+
+
+## 分布式锁（Redisson）
+
+应用自己引入 `org.redisson:redisson` 和 `spring-boot-starter-data-redis`（starter 里都是可选依赖，Redisson 版本由父 POM 管理）后，会按 `spring.data.redis.*`
+（地址、端口、用户名、密码、database、SSL、超时）自动创建单机模式的 `RedissonClient`，不用再配一遍。
+
+业务代码注入 `DistributedLock`，**不要直接用 `RedissonClient` / `RLock`**，以后换实现（比如换成别的锁服务）只需要提供另一个 `DistributedLock` Bean：
+
+```java
+// 拿到锁就执行；等 3 秒仍拿不到则不执行，返回 false
+boolean ran = distributedLock.tryRun("order:" + orderId, Duration.ofSeconds(3), () -> payService.pay(orderId));
+
+// 拿到锁执行并返回结果；拿不到抛 LockNotAcquiredException（没捕获时按未知异常返回 500）
+Order order = distributedLock.call("order:" + orderId, Duration.ofSeconds(3), () -> orderService.create(req));
+```
+
+接口的约定：同一个 key 跨实例互斥、可重入；持有期间锁不会因超时被抢走（执行时间不确定也安全），持有者宕机后锁自动过期；
+`action` 抛出的异常原样抛出，锁一定释放。Redisson 实现靠看门狗续期（默认 30 秒）。
+
+- 创建时就会连接 Redis，连不上则应用启动失败；不需要时去掉依赖，或用 `spring.autoconfigure.exclude` 排除 `SsRedissonAutoConfiguration`
+- 哨兵、集群模式，或需要自定义编解码器等，自己提供 `RedissonClient` Bean 即可覆盖；
+  `SsRedissonAutoConfiguration.toConfig(DataRedisProperties)` 可以拿来在单机配置的基础上调整
+- **原生镜像：** 已用 Redisson 4.8.0 + Boot 4.1.2 + GraalVM 25.0.4 在依赖本 starter 的示例应用上实测（直接用 `RLock`，`DistributedLock` 这层封装是纯 Java，没有单独在原生镜像上跑过）：加锁解锁、
+  可重入、互斥、看门狗续期（持有 15 秒，默认 30 秒的租期被续期）、读写锁，结果与 JVM 模式一致，镜像启动 0.1 秒。Netty 的 `ReferenceCountUtil` 需要反射提示，已在 `SsWebRuntimeHints` 里注册，
+  不注册会在连接 Redis 时报 `NoClassDefFoundError: Could not initialize class io.netty.util.ReferenceCountUtil`。
+  **只验证了单机模式、默认编解码器下的锁**；哨兵/集群、`RBucket` 等数据结构、Redisson 的 Spring Cache 集成、
+  `redisson-spring-boot-starter` 都没有验证
+
+### 使用约定
+
+- **锁要包在事务外面**：先拿锁，再开事务，事务提交之后才释放锁。反过来（事务里面拿锁）时，锁释放了事务还没提交，
+  下一个拿到锁的人读到的是旧数据，互斥就白做了。在 Spring 里要让事务方法是**另一个 Bean** 的 `@Transactional` 方法
+  （同一个类里的自调用不会开事务）：
+  ```java
+  distributedLock.run("order:" + orderId, Duration.ofSeconds(3),
+          () -> orderTxService.pay(orderId));   // pay 是 orderTxService 上的 @Transactional 方法
+  ```
+- **key 只放业务标识**：同一份资源的所有入口必须用同一个 key（比如都用 `order:<id>`），不同资源的 key 不能撞；
+  key 不要带用户输入的任意长文本
+- **等待时间按业务能容忍的来定**：用户请求里别等太久（几秒），拿不到由调用方决定怎么办——`tryRun` 返回 `false`，
+  或 `call` / `run` 抛 `LockNotAcquiredException` 再转成业务提示；不要无限等待
+- **锁只保证"同一时刻只有一个执行者"，不保证幂等**：拿到锁之后仍然要判断"这件事是不是已经做过"
+- `action` 在调用线程里同步执行，不要在里面再把工作丢给别的线程后立刻返回（锁会在 `action` 返回时释放）
+
 ## 接口文档（OpenAPI）
 
 内置 springdoc：`/v3/api-docs` 和 Swagger UI。文档里的响应就是控制器声明的返回类型（用 `Resp<T>` 时即信封结构），
@@ -236,33 +289,6 @@ starter 自己需要的提示（默认配置文件、`aot.factories`）已内置
   如 `@RegisterReflectionForBinding(Xxx.class)`；漏注册时启动正常，调用时报 "Record components not available for record class"
 - 放进 Redis 的类型同样需要反射提示，并且仍受类型白名单限制（`men.sbb8.*`）
 - 原生模式下 `AOT` 在编译期固定了 Bean 和条件，不要依赖运行期改变 `@Conditional` 的属性
-
-### 分布式锁（Redisson）
-
-应用自己引入 `org.redisson:redisson` 和 `spring-boot-starter-data-redis`（starter 里都是可选依赖，Redisson 版本由父 POM 管理）后，会按 `spring.data.redis.*`
-（地址、端口、用户名、密码、database、SSL、超时）自动创建单机模式的 `RedissonClient`，不用再配一遍。
-
-业务代码注入 `DistributedLock`，**不要直接用 `RedissonClient` / `RLock`**，以后换实现（比如换成别的锁服务）只需要提供另一个 `DistributedLock` Bean：
-
-```java
-// 拿到锁就执行；等 3 秒仍拿不到则不执行，返回 false
-boolean ran = distributedLock.tryRun("order:" + orderId, Duration.ofSeconds(3), () -> payService.pay(orderId));
-
-// 拿到锁执行并返回结果；拿不到抛 LockNotAcquiredException（没捕获时按未知异常返回 500）
-Order order = distributedLock.call("order:" + orderId, Duration.ofSeconds(3), () -> orderService.create(req));
-```
-
-接口的约定：同一个 key 跨实例互斥、可重入；持有期间锁不会因超时被抢走（执行时间不确定也安全），持有者宕机后锁自动过期；
-`action` 抛出的异常原样抛出，锁一定释放。Redisson 实现靠看门狗续期（默认 30 秒）。
-
-- 创建时就会连接 Redis，连不上则应用启动失败；不需要时去掉依赖，或用 `spring.autoconfigure.exclude` 排除 `SsRedissonAutoConfiguration`
-- 哨兵、集群模式，或需要自定义编解码器等，自己提供 `RedissonClient` Bean 即可覆盖；
-  `SsRedissonAutoConfiguration.toConfig(DataRedisProperties)` 可以拿来在单机配置的基础上调整
-- **原生镜像：** 已用 Redisson 4.8.0 + Boot 4.1.2 + GraalVM 25.0.4 在依赖本 starter 的示例应用上实测（直接用 `RLock`，`DistributedLock` 这层封装是纯 Java，没有单独在原生镜像上跑过）：加锁解锁、
-  可重入、互斥、看门狗续期（持有 15 秒，默认 30 秒的租期被续期）、读写锁，结果与 JVM 模式一致，镜像启动 0.1 秒。Netty 的 `ReferenceCountUtil` 需要反射提示，已在 `SsWebRuntimeHints` 里注册，
-  不注册会在连接 Redis 时报 `NoClassDefFoundError: Could not initialize class io.netty.util.ReferenceCountUtil`。
-  **只验证了单机模式、默认编解码器下的锁**；哨兵/集群、`RBucket` 等数据结构、Redisson 的 Spring Cache 集成、
-  `redisson-spring-boot-starter` 都没有验证
 
 ### 编译原生镜像的要求（已实测）
 
