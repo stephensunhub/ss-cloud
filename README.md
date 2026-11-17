@@ -50,10 +50,12 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 
 ## 共同约定
 
-- **默认配置**放在各模块的 `META-INF/*-defaults.yaml`，通过 `EnvironmentPostProcessor` 以**最低优先级**加载：
-  应用的 `application.yml`、环境变量、命令行都可以覆盖。激活 `prod` / `production` 环境时有一组更严格的默认值
+- **默认配置**放在各 starter 的 `application.yaml` 里，优先级：starter 的 `application.yaml` < 应用的 `application.yml` < 应用的 `application-<profile>.yml`
+  （环境变量、命令行更高）。**应用不要也写 `application.yaml`**，否则 starter 的会被整个遮住。starter 只放与环境无关的值，
+  **不按 profile 名区分生产环境**（各环境的 profile 名不统一）；生产环境的配置（关闭接口文档、管理端口、采样率等）由应用写进自己的
+  `application-<生产 profile 名>.yml`，可复制的内容见各模块 README 的"生产环境配置"
 - **指标**：Prometheus 抓取，所有指标带 `application` 标签，耗时指标配置了固定的 11 个桶（5ms–10s），可跨实例聚合分位数。
-  web（prod）和 gRPC 的抓取地址相同，都是 **`:9091/metrics`**，Prometheus 对所有服务用同一份配置
+  web（生产环境配置下）和 gRPC 的抓取地址相同，都是 **`:9091/metrics`**，Prometheus 对所有服务用同一份配置
 - **管理端口 9091 没有认证**（指标、健康检查，不含业务数据），访问控制交给部署层：用 NetworkPolicy 只允许 Prometheus 和
   kubelet 访问。业务端口（web 的 HTTP、gRPC 服务端口）不受影响。示例（`monitoring` 命名空间里的 Prometheus 抓取）：
   ```yaml
@@ -73,7 +75,7 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
   （这份示例没有在真实集群里验证过）。要在应用内认证的话，不建议给 9091 加共享 token：Prometheus 抓取和探针都要跟着配，
   还要轮换；需要时用服务网格的 mTLS 或 Prometheus 的 TLS 抓取
 - **链路追踪**：OTLP/HTTP 导出，可对接 Jaeger、Tempo 或 OTel Collector；
-  配置了 `management.opentelemetry.tracing.export.otlp.endpoint` 才会导出，prod 采样率默认 0.1
+  配置了 `management.opentelemetry.tracing.export.otlp.endpoint` 才会导出，生产环境配置里采样率调到 0.1（starter 默认全量）
 - **健康检查**：web 用 actuator 的 HTTP 探针；gRPC 用 k8s 的 gRPC 探针（`grpc.health.v1`，`liveness` / `readiness`）
 - **gRPC 服务发现**：k8s 里用 headless Service（`dns:///`，`round_robin`），服务端默认设连接最长存活 10 分钟让客户端定期重新解析；
   用法见 `ss-grpc-client-starter` 和 `ss-grpc-server-starter` 的 README

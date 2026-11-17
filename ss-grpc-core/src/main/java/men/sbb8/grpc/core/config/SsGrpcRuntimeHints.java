@@ -8,8 +8,7 @@ import org.springframework.aot.hint.RuntimeHintsRegistrar;
 import java.util.concurrent.atomic.LongAdder;
 
 /**
- * GraalVM 原生镜像：把默认配置文件打进镜像（否则 {@link SsGrpcEnvironmentPostProcessor} 运行期读不到它），
- * 并补上 grpc-java 缺少的反射提示
+ * GraalVM 原生镜像：补上 grpc-java 缺少的反射提示
  *
  * @author Stephen
  */
@@ -17,7 +16,6 @@ public class SsGrpcRuntimeHints implements RuntimeHintsRegistrar {
 
     @Override
     public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-        hints.resources().registerPattern(SsGrpcEnvironmentPostProcessor.DEFAULTS);
         // grpc-java 的计数器（io.grpc.internal.ReflectionLongAdderCounter）通过反射创建并调用 LongAdder，
         // Boot / Spring gRPC 没有为它注册提示，缺了会在 gRPC 服务端 / 客户端启动时失败
         hints.reflection().registerType(LongAdder.class,

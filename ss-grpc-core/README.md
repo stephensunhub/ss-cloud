@@ -6,6 +6,36 @@ gRPC **服务端、客户端共用**的部分，不含 gRPC 服务端 / 客户�
 包含：错误模型（`ErrorDetail` proto、`BusinessCode`、`GrpcBusinessException`、`GrpcRemoteException`）、
 Prometheus 抓取端口、链路追踪与监控指标的默认配置。
 
+## 默认值与生产环境配置
+
+默认值放在 starter 的 `application.yaml` 里，优先级（后者覆盖前者）：**starter 的 `application.yaml` < 应用的 `application.yml` < 应用的 `application-<profile>.yml`**，
+环境变量和命令行再高一层。应用想改某个默认值，在自己的配置里写同名属性即可。
+**注意：应用自己不要也写 `application.yaml`**（扩展名是 `.yaml`）：类路径上同名文件只会读到第一个，starter 的会被整个遮住，应用没覆盖的默认值也一起丢了，且没有任何提示；
+应用请用 `application.yml` 或 `application.properties`。
+本模块的 `application.yaml` 同时放了 gRPC 服务端的默认值（端口、连接最长存活、健康检查）：`ss-grpc-server-starter` 不再单独带一个同名文件
+（两个 jar 里同名的文件只会读到第一个），所以只做客户端的应用也会带着 `spring.grpc.server.*` 默认值，但没有服务端 starter 就不会启动服务端。
+
+**不按 profile 名区分生产环境**（各环境的 profile 名并不统一）。生产环境要关闭反射、降低采样率时，由应用写进自己的 `application-<生产 profile 名>.yml`，可以直接复制：
+
+```yaml
+# application-<你的生产 profile 名>.yml   （profile 名随意，激活它即可：--spring.profiles.active=<名字>）
+spring:
+  grpc:
+    server:
+      reflection:
+        enabled: false      # 关闭反射服务（反射会暴露所有接口定义）；仅服务端
+management:
+  tracing:
+    sampling:
+      probability: 0.1      # 采样 10%（starter 默认全量）
+logging:
+  structured:
+    format:
+      console: ecs          # 控制台日志输出结构化 JSON
+```
+
+漏掉这份配置，gRPC 反射服务会保持开启（暴露所有接口定义），上线前要核对。
+
 ## 原生镜像（GraalVM）
 
 已用 GraalVM 25（Oracle GraalVM 25.0.4）实际编译并运行验证（服务端 + 客户端，含 protobuf `ErrorDetail`、
@@ -14,8 +44,8 @@ Prometheus 抓取端口、链路追踪与监控指标的默认配置。
 另已验证：只引入 `ss-grpc-client-starter` 的原生镜像（启动 0.014 秒）调用原生服务端，链路传递和 OTLP 导出正常
 （同一个 traceId 同时出现在客户端和服务端导出的数据里）。
 
-prod 档案编译出的镜像里，gRPC 反射服务已关闭（用 `grpcurl` 实测：`list` 返回 "server does not support the reflection API"，
-而普通编译的镜像能列出所有服务；健康检查等其他功能不受影响）。要关闭反射，必须在**编译时**激活 prod，见下文。
+用生产 profile（见"生产环境配置"）编译出的镜像里，gRPC 反射服务已关闭（用 `grpcurl` 实测：`list` 返回 "server does not support the reflection API"，
+而普通编译的镜像能列出所有服务；健康检查等其他功能不受影响）。要关闭反射，必须在**编译时**激活生产 profile，见下文。
 
 starter 已内置所需提示：默认配置文件，以及 grpc-java 通过反射使用的 `LongAdder`（Boot / Spring gRPC 没有注册它，
 缺了会在 gRPC 服务端 / 客户端启动时失败）。应用自己的 protobuf 消息和 gRPC 服务由 Spring gRPC 的 AOT 处理注册。
@@ -26,15 +56,16 @@ starter 已内置所需提示：默认配置文件，以及 grpc-java 通过反�
 Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnProperty` 等属性条件决定是否创建的 Bean，
 运行期再改属性**不会**增删它。只改值的属性（端口、URL、采样率等）不受影响。
 
-- **编译时就要激活目标环境的 profile**，否则 prod 的默认值不会进入镜像（接口文档仍然暴露、独立管理端口不存在）：
+- **编译时就要带上目标环境的配置**，否则生产配置（见"生产环境配置"）不会进入镜像（接口文档仍然暴露、独立管理端口不存在）。
+  生产配置放在应用的 `application-<profile>.yml` 里，编译时激活那个 profile：
   ```bash
-  SPRING_PROFILES_ACTIVE=prod mvn -Pnative -DskipTests native:compile
-  # 或 -Dspring-boot.aot.jvmArguments=-Dspring.profiles.active=prod
+  SPRING_PROFILES_ACTIVE=<你的生产 profile 名> mvn -Pnative -DskipTests native:compile
+  # 或 -Dspring-boot.aot.jvmArguments=-Dspring.profiles.active=<你的生产 profile 名>
   ```
-  注意：`-Dspring-boot.run.profiles`、`-Dspring-boot.aot.profiles`、`-Dspring.profiles.active` 直接写在 mvn 命令行上**都不会**传给 AOT 进程（已实测）。
-  也就是说镜像是按环境编译的，prod 镜像用 prod 编译。
+  注意：`-Dspring-boot.run.profiles`、`-Dspring-boot.aot.profiles`、`-Dspring.profiles.active` 直接写在 mvn 命令行上**都不会**传给 AOT 进程（已实测），环境变量或 `-Dspring-boot.aot.jvmArguments` 可以。
+  也就是说镜像是按环境编译的，生产镜像用生产 profile 编译。
 - **OTLP 导出器需要编译期就存在导出地址**，否则导出器不会被包含，运行期配了地址也不会导出（且没有任何报错）。
-  做法：编译期放一个占位地址（如 `application-prod.properties` 里的
+  做法：编译期放一个占位地址（如应用配置里的
   `management.opentelemetry.tracing.export.otlp.endpoint=http://localhost:4318/v1/traces`），运行期再用环境变量或参数覆盖成真实地址。
 - 同理，各类 `*.enabled` 开关要在编译期确定。已实测的例子：`springdoc.*.enabled`、独立管理端口，以及示例里自己写的
   `@ConditionalOnProperty` 开关，运行期设置都不生效。`ss.grpc.metrics.prometheus.enabled`
@@ -52,7 +83,7 @@ Spring AOT 在**编译期**就固定了 Bean 集合：凡是由 `@ConditionalOnP
 | `ss.grpc.metrics.prometheus.port` | `9091` | 0–65535，超出范围启动失败；端口被占用时也会失败并给出提示；`0` 为随机端口 |
 | `ss.grpc.metrics.prometheus.path` | `/metrics` | 抓取路径，必须以 `/` 开头，否则启动失败 |
 
-**与 `ss-web-starter` 在 prod 下的抓取地址一致**（都是 `:9091/metrics`，指标都带 `application` 标签、耗时桶一致），
+**与 `ss-web-starter` 在生产环境配置下的抓取地址一致**（都是 `:9091/metrics`，指标都带 `application` 标签、耗时桶一致），
 Prometheus 对所有服务可以用同一份抓取配置。
 
 端口只是 Pod 内的端口；用 ServiceMonitor / PodMonitor 或 Pod 注解让 Prometheus 抓取。
@@ -76,7 +107,7 @@ management:
 也可以不改代码，用环境变量（Boot 会映射 OpenTelemetry 标准变量）：
 `OTEL_EXPORTER_OTLP_ENDPOINT`、`OTEL_EXPORTER_OTLP_HEADERS` 等。服务名取自 `spring.application.name`。
 
-- 采样率：默认 `1.0`（开发、测试全量），激活 `prod` / `production` 时默认 `0.1`，用 `management.tracing.sampling.probability` 调整
+- 采样率：默认 `1.0`（开发、测试全量），生产环境配置里调到 `0.1`，用 `management.tracing.sampling.probability` 调整
 - 调用链会通过 gRPC metadata（W3C traceparent） 自动延续到下游，下游的 span 与上游在同一个 trace 里
 - 日志里自动带 traceId / spanId；失败调用返回的 `ErrorDetail.trace_id` 是服务端处理这次调用的 traceId（没开启追踪时为空），调用方报错时带上它即可在服务端日志里定位（原生镜像里已实测）
 - 注意是头部采样：未被采样的请求也会有 traceId，但在 Jaeger 里查不到。需要"出错必留"请在 Collector 里做尾部采样

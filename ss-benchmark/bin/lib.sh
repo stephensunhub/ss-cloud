@@ -1,6 +1,9 @@
 #!/bin/bash
 # 框架开销基准的公共函数，被 run-all.sh、check-flags.sh 引用，不单独运行。
 
+# 生产环境配置（与 ss-grpc-core README 的"生产环境配置"一致：采样率 0.1、结构化日志、关闭反射），用 -D 传给被测 JVM
+PROD_OPTS="-Dmanagement.tracing.sampling.probability=0.1 -Dlogging.structured.format.console=ecs -Dspring.grpc.server.reflection.enabled=false"
+
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MODULE="$ROOT/ss-benchmark"
 PORT="${BENCH_PORT:-19101}"

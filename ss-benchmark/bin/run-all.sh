@@ -29,7 +29,7 @@ log "### 负载(开始前): $(uptime | sed 's/.*load averages*: //')"
 log; log "### 实验 1：并发扫描（raw = 原生 grpc-java；spring-prod = ss-grpc-server-starter 的 prod 配置；8 条连接；每种启动 ${RUNS1} 次）"
 for run in $(seq 1 "$RUNS1"); do
   for kind in raw spring-prod; do
-    if [ "$kind" = raw ]; then start_server raw || exit 1; else start_server spring -Dspring.profiles.active=prod || exit 1; fi
+    if [ "$kind" = raw ]; then start_server raw || exit 1; else start_server spring $PROD_OPTS || exit 1; fi
     for conc in $CONCS; do
       # shellcheck disable=SC2086
       client --label "exp1-$kind" --run "$run" --concurrency "$conc" --channels 8 $W1 | tee -a "$OUT"
@@ -45,7 +45,7 @@ VARIANTS=(
   "obs-off|spring|-Dspring.grpc.server.observation.enabled=false"
   "metrics-no-buckets|spring|-Dmanagement.tracing.enabled=false -Dmanagement.metrics.distribution.slo.grpc.server="
   "metrics-buckets|spring|-Dmanagement.tracing.enabled=false"
-  "prod-sampling-0.1|spring|-Dspring.profiles.active=prod"
+  "prod-sampling-0.1|spring|$PROD_OPTS"
   "dev-sampling-1.0|spring|"
 )
 log; log "### 实验 2：观测开关对比（并发 64，8 条连接；每个变体启动 ${RUNS2} 次，交错进行）"
@@ -61,7 +61,7 @@ for run in $(seq 1 "$RUNS2"); do
 done
 
 log; log "### 实验 3：连接数（spring-prod，并发 256）"
-start_server spring -Dspring.profiles.active=prod || exit 1
+start_server spring $PROD_OPTS || exit 1
 for channels in $CHANNELS; do
   # shellcheck disable=SC2086
   client --label "exp3-ch$channels" --run 1 --concurrency 256 --channels "$channels" $W3 | tee -a "$OUT"

@@ -6,8 +6,7 @@ import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.RuntimeHintsRegistrar;
 
 /**
- * GraalVM 原生镜像：把 starter 的默认配置文件打进镜像，
- * 否则 {@link SsWebEnvironmentPostProcessor} 在运行期读不到它
+ * GraalVM 原生镜像：starter 需要的反射提示
  *
  * @author Stephen
  */
@@ -15,7 +14,6 @@ public class SsWebRuntimeHints implements RuntimeHintsRegistrar {
 
     @Override
     public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
-        hints.resources().registerPattern(SsWebEnvironmentPostProcessor.DEFAULTS);
         // Netty 的 ReferenceCountUtil 静态初始化时反射查找 touch 方法，原生镜像里不注册就初始化失败，
         // Redisson（以及其他直接用 Netty 的库）连接 Redis 时会报 NoClassDefFoundError: Could not initialize class
         hints.reflection().registerTypeIfPresent(classLoader, "io.netty.util.ReferenceCountUtil",

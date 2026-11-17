@@ -69,6 +69,18 @@ class CacheTtlEndToEndTest {
         }
     }
 
+    /** 缓存写入刚返回时，key 偶尔还查不到（全量测试里出现过几次），等它出现再看 TTL */
+    private void awaitKey(String key) {
+        for (int i = 0; i < 50 && !Boolean.TRUE.equals(redis.hasKey(key)); i++) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
     @AfterEach
     void cleanUp() {
         if (redisAvailable()) {
@@ -85,6 +97,8 @@ class CacheTtlEndToEndTest {
         items.get(1);
         items.get(100);
 
+        awaitKey(CACHE + "::1");
+        awaitKey(CACHE + "::100");
         long normal = redis.getExpire(CACHE + "::1");
         long longer = redis.getExpire(CACHE + "::100");
         assertTrue(normal > 1700 && normal <= 1800, "默认 30 分钟，实际 " + normal + " 秒");

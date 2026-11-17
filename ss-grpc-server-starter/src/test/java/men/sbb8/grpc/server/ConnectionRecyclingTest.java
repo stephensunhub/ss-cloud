@@ -140,7 +140,7 @@ class ConnectionRecyclingTest {
         var defaults = new org.springframework.boot.env.YamlPropertySourceLoader();
         try {
             var sources = defaults.load("d", new org.springframework.core.io.ClassPathResource(
-                    "META-INF/ss-grpc-server-defaults.yaml"));
+                    "application.yaml"));
             var env2 = new org.springframework.core.env.StandardEnvironment();
             sources.forEach(env2.getPropertySources()::addLast);
             assertEquals(Duration.ofMinutes(10), Binder.get(env2)

@@ -12,7 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = "ss.web.user-info.required=true")
 @AutoConfigureMockMvc
-@ActiveProfiles("prod")
+// 激活应用自己的生产 profile（测试资源里的 application-online.yml），它覆盖 starter 的 application.yaml
+@ActiveProfiles("online")
 class SecurityDefaultsProdTest {
 
     @Autowired

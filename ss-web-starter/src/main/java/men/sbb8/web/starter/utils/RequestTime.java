@@ -11,7 +11,9 @@ import org.springframework.web.context.request.RequestContextHolder;
  */
 public final class RequestTime {
 
-    /** 请求属性名 */
+    /**
+     * 请求属性名
+     */
     public static final String ATTRIBUTE = RequestTime.class.getName() + ".millis";
 
     private RequestTime() {

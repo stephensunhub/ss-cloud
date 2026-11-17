@@ -14,7 +14,7 @@ import org.springframework.grpc.client.GrpcChannelFactory;
 /**
  * 通过 ss-grpc-client-starter（以及 Spring gRPC 的客户端、观测、指标、追踪）创建压测用的连接，
  * 和 {@link BenchClient} 里原生创建的连接用同样的线程模型（directExecutor），这样两者的差别只来自 starter。
- * 观测、采样率等开关用 {@code -D} 系统属性切换（和服务端一样），例如 {@code -Dspring.profiles.active=prod}。
+ * 观测、采样率等开关用 {@code -D} 系统属性切换（和服务端一样），例如 {@code -Dmanagement.tracing.sampling.probability=0.1}。
  * 这个 JVM 里不需要服务端和抓取端口（模块里同时有服务端 starter），所以显式关闭。
  *
  * @author Stephen

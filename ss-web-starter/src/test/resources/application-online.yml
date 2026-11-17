@@ -1,0 +1,22 @@
+# 模拟应用自己的"生产 profile"配置文件（profile 名随意，这里叫 online）。
+# 内容与 ss-web-starter README 的"生产环境配置"一致；测试用它验证这份配置确实生效、能覆盖 starter 的默认值
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+management:
+  server:
+    port: 9091
+  endpoints:
+    web:
+      base-path: /
+      path-mapping:
+        prometheus: metrics
+  tracing:
+    sampling:
+      probability: 0.1
+logging:
+  structured:
+    format:
+      console: ecs

@@ -18,7 +18,7 @@ ss-cloud 是微服务的"规范 starter"集合：应用继承本 POM、按需引
 - gRPC 模块首次构建要联网下载 `protoc`（protobuf-maven-plugin）
 - 没有 lint / 格式化命令
 - `RedissonLockTest` 的加锁用例需要本机 6379 有 Redis，没有会自动跳过
-- 原生镜像：GraalVM 25，`SPRING_PROFILES_ACTIVE=prod ./mvnw -Pnative -DskipTests native:compile`；**必须在编译期激活目标 profile**（见下文）
+- 原生镜像：GraalVM 25，`SPRING_PROFILES_ACTIVE=<生产profile> ./mvnw -Pnative -DskipTests native:compile`；**必须在编译期激活应用的生产 profile**（见下文）
 
 ## 定位与边界
 
@@ -60,7 +60,8 @@ ss-cloud 是微服务的"规范 starter"集合：应用继承本 POM、按需引
 
 ## 实现 starter 功能时的规则
 
-- **默认配置**放在 `META-INF/*-defaults.yaml`，由 `EnvironmentPostProcessor`（在 `spring.factories` 注册）以**最低优先级**加载；`prod` / `production` 激活时有一组更严格的默认值
+- **默认配置**放在各 starter 的 `application.yaml`（不是 `EnvironmentPostProcessor`）：starter `application.yaml` < 应用 `application.yml` < 应用 `application-<profile>.yml`。**应用不能也写 `application.yaml`**（同名文件类路径上只读第一个，starter 的会被整个遮住）。starter 只放环境无关的值，**不按 profile 名区分生产**（各环境的 profile 名不统一）：生产配置（关闭接口文档、9091 管理端口、采样率 0.1、ECS 日志、关闭 gRPC 反射）由应用写进自己的 `application-<profile>.yml`，可复制的内容在各模块 README 的"生产环境配置"。
+- **同一个应用的多个 jar 不能各带一个 `application.yaml`**：同名文件只会读到第一个，所以 gRPC 服务端的默认值合并在 `ss-grpc-core` 的 `application.yaml` 里（`ss-grpc-server-starter` 没有自己的默认值文件）；新增模块要带默认值时先想这个冲突
 - 自动配置在 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` 注册，Bean 一般带 `@ConditionalOnMissingBean`，应用可以用同类型 Bean 覆盖。可选能力（Redis、Redisson、MyBatis、gRPC 状态识别）是 `optional` 依赖 + `@ConditionalOnClass`，应用自己引入才生效
 - **原生镜像：AOT 在编译期固定 Bean 集合**，`@ConditionalOnProperty` 的值运行期改了不生效。需要运行期可改的开关，就总是注册 Bean、在运行时读配置（`ResponseWrapAdvice` 就是这样做的）；只改值的属性（端口、URL、采样率）不受影响
 - 运行期反射需要的提示放在 `RuntimeHintsRegistrar`，并在 **`META-INF/spring/aot.factories`**（不是 `spring.factories`）里注册，并写测试证明它能被发现（见 `SsWebRuntimeHintsTest`）
@@ -73,9 +74,9 @@ ss-cloud 是微服务的"规范 starter"集合：应用继承本 POM、按需引
 - `UserInfo` 来自网关透传的请求头，**直接信任、不验签**，所以服务只能经网关访问；用户头会透传给下游内部服务（含异步线程，`ss.web.client.propagate-user-headers`）
 - 分布式锁：业务代码只依赖 `DistributedLock`（`tryRun` / `call` / `run`），**不要直接用 `RedissonClient` / `RLock`**，换实现时提供另一个 `DistributedLock` Bean。Redisson 实现靠看门狗续期，创建时就连 Redis
 - Redis 序列化：key 字符串、value JSON（带 `@class`，类型白名单 `men.sbb8.*` 等）
-- Spring Cache：值用同一个 JSON 序列化器；**默认 30 分钟过期**（`ss-web-defaults.yaml` 里的 `spring.cache.redis.time-to-live`，Boot 默认永不过期），个别缓存项通过 `CacheTtlResolver` Bean 按 key/值定制，`null` 用默认值、`Duration.ZERO` 永不过期。注解做不到"每次调用单独指定过期时间"，这种情况用 `redisTemplate` 直接写。starter 不封装 Hash/Set/ZSet/Pub/Sub 等结构，也不提供 `RedisUtil` 之类的工具类，业务直接用 `redisTemplate`；同一个 key 不要混用 `redisTemplate` 和 `StringRedisTemplate`（`String` 在 `redisTemplate` 里存成带引号的 JSON）
+- Spring Cache：值用同一个 JSON 序列化器；**默认 30 分钟过期**（`application.yaml` 里的 `spring.cache.redis.time-to-live`，Boot 默认永不过期），个别缓存项通过 `CacheTtlResolver` Bean 按 key/值定制，`null` 用默认值、`Duration.ZERO` 永不过期。注解做不到"每次调用单独指定过期时间"，这种情况用 `redisTemplate` 直接写。starter 不封装 Hash/Set/ZSet/Pub/Sub 等结构，也不提供 `RedisUtil` 之类的工具类，业务直接用 `redisTemplate`；同一个 key 不要混用 `redisTemplate` 和 `StringRedisTemplate`（`String` 在 `redisTemplate` 里存成带引号的 JSON）
 - 测试类路径上有 JCache 实现时 Boot 会优先选它，缓存测试要写 `spring.cache.type=redis`（`CacheTtlEndToEndTest`）
-- 管理端口：web（prod）与 gRPC 的 Prometheus 抓取都是 `:9091/metrics`，没有认证，访问控制交给部署层（NetworkPolicy）
+- 管理端口：web（生产环境配置下）与 gRPC 的 Prometheus 抓取都是 `:9091/metrics`，没有认证，访问控制交给部署层（NetworkPolicy）
 
 ## 测试要点
 

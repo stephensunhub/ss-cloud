@@ -26,7 +26,7 @@ VARIANTS=(
   "spring-obs-off-no-deadline|spring|-Dspring.grpc.client.observation.enabled=false -Dss.grpc.client.default-deadline=0s"
   "spring-obs-off|spring|-Dspring.grpc.client.observation.enabled=false"
   "spring-metrics|spring|-Dmanagement.tracing.enabled=false"
-  "spring-prod-sampling-0.1|spring|-Dspring.profiles.active=prod"
+  "spring-prod-sampling-0.1|spring|$PROD_OPTS"
   "spring-dev-sampling-1.0|spring|"
 )
 

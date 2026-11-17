@@ -12,14 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SsGrpcCoreRuntimeHintsTest {
 
     @Test
-    void defaultsFileIsRegisteredAsResourceHint() {
-        RuntimeHints hints = new RuntimeHints();
-        new SsGrpcRuntimeHints().registerHints(hints, getClass().getClassLoader());
-
-        assertThat(RuntimeHintsPredicates.resource().forResource("META-INF/ss-grpc-defaults.yaml")).accepts(hints);
-    }
-
-    @Test
     void grpcJavaLongAdderReflectionIsRegistered() {
         RuntimeHints hints = new RuntimeHints();
         new SsGrpcRuntimeHints().registerHints(hints, getClass().getClassLoader());

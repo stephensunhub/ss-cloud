@@ -13,7 +13,7 @@ import java.util.concurrent.RejectedExecutionException;
 
 /**
  * 异步任务线程池的补充。线程池本身的参数、MDC / traceId 传递、停机等待都用 Boot 的
- * {@code spring.task.*} 配置（默认值见 ss-web-defaults.yaml），这里只补 Boot 没有的一项：
+ * {@code spring.task.*} 配置（默认值见 application.yaml），这里只补 Boot 没有的一项：
  * 线程池（关闭虚拟线程时 Boot 创建的 {@link ThreadPoolTaskExecutor}）满了拒绝任务时，记一条错误日志并计数
  * {@code executor.rejected}（标签 {@code executor} 为线程名前缀），行为仍和默认的拒绝策略一样抛出异常，
  * 由调用方（HTTP 层、{@code @Async} 框架）决定降级，不让请求线程替线程池干活。

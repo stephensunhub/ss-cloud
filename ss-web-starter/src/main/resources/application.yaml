@@ -1,4 +1,6 @@
-# ss-web-starter 默认配置（最低优先级，应用配置可覆盖）
+# ss-web-starter 默认配置。优先级：本文件 < 应用的 application.yml < 应用的 application-<profile>.yml，后者覆盖前者。
+# 本文件只放与环境无关的值；生产环境要关闭接口文档、改管理端口、降低采样率等，见 README 的"生产环境配置"，由应用写进自己的 application-<profile>.yml
+# （注意：应用自己也写 application.yaml 时，本文件会被整个遮住，应用请用 application.yml 或 application.properties）
 # 与 Spring Boot 默认值相同的项（graceful 停机、健康探针、springdoc 路径）不重复配置
 server:
   # 容器只信任内网代理的 X-Forwarded-*，据此还原真实客户端地址（见 WebUtils#getRemoteIp）
@@ -54,7 +56,7 @@ spring:
 management:
   tracing:
     sampling:
-      # 开发/测试环境全量采样；prod 默认 0.1（见 SsWebEnvironmentPostProcessor）
+      # 默认全量采样；生产环境按 README 的"生产环境配置"调低
       probability: 1.0
   endpoints:
     web:

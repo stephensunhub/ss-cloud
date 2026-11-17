@@ -81,5 +81,5 @@ readinessProbe:
 
 ## 生产环境默认值
 
-激活 `prod` / `production` 时：关闭 gRPC 反射服务（会暴露所有接口定义）；
+生产环境要关闭 gRPC 反射服务（会暴露所有接口定义）：写进应用自己的 `application-<生产 profile 名>.yml`（`spring.grpc.server.reflection.enabled: false`，完整的生产配置见 `ss-grpc-core` 的 README"默认值与生产环境配置"）；
 另见 `ss-grpc-core` 的追踪采样率与结构化日志默认值。

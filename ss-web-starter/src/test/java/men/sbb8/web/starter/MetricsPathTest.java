@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * prod 默认值里的路径配置（base-path=/、prometheus 映射为 metrics）确实能让指标出现在 /metrics，
+ * 生产环境配置里的路径配置（base-path=/、prometheus 映射为 metrics）确实能让指标出现在 /metrics，
  * 与 gRPC 服务的抓取路径一致。这里把它们应用到同一个端口上验证。
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {

@@ -1,0 +1,15 @@
+# 模拟应用自己的"生产 profile"配置文件（profile 名随意，这里叫 online）。
+# 内容与 ss-grpc-server-starter / ss-grpc-core README 的"生产环境配置"一致
+spring:
+  grpc:
+    server:
+      reflection:
+        enabled: false
+management:
+  tracing:
+    sampling:
+      probability: 0.1
+logging:
+  structured:
+    format:
+      console: ecs

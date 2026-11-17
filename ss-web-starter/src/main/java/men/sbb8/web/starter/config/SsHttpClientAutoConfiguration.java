@@ -22,7 +22,7 @@ import tools.jackson.databind.json.JsonMapper;
  *     <li>所有 @HttpExchange 客户端的非 2xx 响应统一转成 RemoteCallException（不影响应用自己创建的 RestClient）</li>
  *     <li>下游连不上、超时统一由全局异常处理返回 502 / 504；按服务名调用时"没有可用实例"同样如此</li>
  *     <li>按 ss.web.client.propagate-user-headers 透传当前用户请求头（默认 all，所有分组；含 @Async 等异步线程；缺失的 X-Request-Ip 用 0.0.0.0）</li>
- *     <li>超时等通用参数用 spring.http.clients.* 配置（默认值见 ss-web-defaults.yaml）</li>
+ *     <li>超时等通用参数用 spring.http.clients.* 配置（默认值见 application.yaml）</li>
  * </ul>
  * 使用方式：在配置类上 {@code @ImportHttpServices(group = "wallet", types = WalletClient.class)}，
  * 并配置 {@code spring.http.serviceclient.wallet.base-url}。

@@ -12,14 +12,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 class SsWebRuntimeHintsTest {
 
     @Test
-    void defaultsFileIsRegisteredAsResourceHint() {
-        RuntimeHints hints = new RuntimeHints();
-        new SsWebRuntimeHints().registerHints(hints, getClass().getClassLoader());
-
-        assertThat(RuntimeHintsPredicates.resource().forResource("META-INF/ss-web-defaults.yaml")).accepts(hints);
-    }
-
-    @Test
     void nettyReferenceCountUtilIsRegisteredForReflection() {
         RuntimeHints hints = new RuntimeHints();
         new SsWebRuntimeHints().registerHints(hints, getClass().getClassLoader());

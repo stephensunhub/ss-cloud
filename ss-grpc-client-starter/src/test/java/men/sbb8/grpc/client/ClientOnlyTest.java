@@ -28,7 +28,10 @@ class ClientOnlyTest {
         assertEquals(1, context.getBeansOfType(DefaultDeadlineClientInterceptor.class).size());
         assertThrows(ClassNotFoundException.class, () -> Class.forName("men.sbb8.grpc.server.BusinessExceptionHandler"));
         assertFalse(context.containsBean("ssBusinessExceptionHandler"));
-        assertFalse(env.containsProperty("spring.grpc.server.port"), "客户端不应带有服务端端口默认值");
+        // 服务端的默认值和客户端共用同一个 application.yaml（同名文件类路径上只会读到第一个），所以纯客户端应用也带着它们，
+        // 但没有服务端 starter 就不会启动服务端，也不会有服务端的 Bean
+        assertTrue(env.containsProperty("spring.grpc.server.port"));
+        assertFalse(context.containsBean("ssBusinessExceptionHandler"));
     }
 
     @Test

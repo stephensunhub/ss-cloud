@@ -1,0 +1,46 @@
+# ss-grpc 默认配置（服务端、客户端共用；服务端的默认值也放在这里）。
+# 优先级：本文件 < 应用的 application.yml < 应用的 application-<profile>.yml，后者覆盖前者。
+# 只放与环境无关的值；生产环境关闭反射、降低采样率、结构化日志等，见 README 的"生产环境配置"，由应用写进自己的 application-<profile>.yml
+# （注意：应用自己也写 application.yaml 时，本文件会被整个遮住，应用请用 application.yml 或 application.properties。
+# 服务端的默认值合并在这里而不是放在 ss-grpc-server-starter 里：两个 jar 里同名的文件，类路径上只会读到第一个）
+# 与 Spring Boot 默认值相同的项（观测指标等）不重复配置
+# 不配置 spring.threads.virtual.enabled：Boot 的 gRPC 服务端不读取它，配了也不生效
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  grpc:
+    server:
+      port: 9001
+      keepalive:
+        connection:
+          # 连接最长存活时间，到期后服务端优雅地关闭它（GOAWAY，给 grace-period 的时间让进行中的请求完成），客户端随之重新解析地址并重连。
+          # k8s 用 headless Service 做服务发现时这是必须的：gRPC 的 DNS 解析只在连接断开时才重新查询，
+          # 不设的话（Boot 默认无限），新扩容的 pod 要等到有连接因故障断开才会被客户端发现，一直没有流量。
+          # 超过这个时间的长连接流式调用会在 max-age + grace-period（Boot 默认 30s）后被取消，
+          # 长时间订阅类的服务请调大或客户端做好重新订阅。与 Boot 默认值相同的 grace-period 不重复配置
+          max-age: 10m
+      health:
+        # k8s gRPC 探针按服务名探测 grpc.health.v1：
+        #   存活 service: liveness   就绪 service: readiness   service 留空表示整体健康
+        # 与 Boot HTTP 探针一致：存活只看进程自身状态，不带外部依赖；就绪看是否接收流量（含优雅停机），
+        # 应用需要把依赖（数据库等）纳入就绪时，追加 include，名称是 actuator 健康贡献者名
+        service:
+          liveness:
+            include: livenessState
+          readiness:
+            include: readinessState
+management:
+  tracing:
+    sampling:
+      # 默认全量采样；生产环境按 README 的"生产环境配置"调低
+      probability: 1.0
+  metrics:
+    tags:
+      # 所有指标带上服务名，便于在 Prometheus 里按服务过滤
+      application: ${spring.application.name:application}
+    distribution:
+      # gRPC 耗时默认只有 count/sum/max，配上固定的桶后才能跨实例聚合出 p95/p99。
+      # 只取 11 个桶，而不是 percentiles-histogram 的 60 多个：方法 × 状态的组合多时，时间序列数量差 5 倍以上
+      slo:
+        grpc.server: 5ms,10ms,25ms,50ms,100ms,250ms,500ms,1s,2500ms,5s,10s
+        grpc.client: 5ms,10ms,25ms,50ms,100ms,250ms,500ms,1s,2500ms,5s,10s
