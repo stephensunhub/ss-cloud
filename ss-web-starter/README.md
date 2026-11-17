@@ -35,17 +35,22 @@ Resp<Order> get(@PathVariable long id) {
   ```java
   @Getter @AllArgsConstructor
   enum OrderCode implements BusinessCode {
-      ORDER_NOT_FOUND("订单不存在");
+      ORDER_NOT_FOUND("订单不存在", HttpStatus.NOT_FOUND),   // 业务码自带 HTTP 状态码
+      ORDER_CLOSED("订单已关闭");                            // 不写的默认 200
       private final String msg;
+      private final HttpStatusCode httpStatus;
+      OrderCode(String msg) { this(msg, HttpStatus.OK); }   // 有的项不写状态码时才需要这个单参构造器
   }
 
-  throw new BusinessException(OrderCode.ORDER_NOT_FOUND);                       // HTTP 200 + 业务码
-  throw new BusinessException(OrderCode.ORDER_NOT_FOUND, HttpStatus.NOT_FOUND);  // 指定 HTTP 状态码
+  throw new BusinessException(OrderCode.ORDER_NOT_FOUND);                        // 用业务码自带的状态：404
+  throw new BusinessException(OrderCode.ORDER_CLOSED, HttpStatus.CONFLICT);      // 显式指定，覆盖业务码自带的
   ```
+
+  `BusinessCode#getHttpStatus()` 有默认实现（200），已有的枚举不用改。
 
 | 异常 | HTTP 状态 | `code` |
 |---|---|---|
-| `BusinessException` | 自带，常用构造器默认 200（无参和包装其他异常的构造器为 500 + `SYSTEM_ERROR`） | 业务码 |
+| `BusinessException` | 显式指定的优先；否则取业务码的 `getHttpStatus()`（默认 200；`CommonCode.UNAUTHORIZED` 401、`SYSTEM_ERROR` 500）；`(String, String)` 构造固定 200；无参和包装其他异常的构造器为 500 + `SYSTEM_ERROR` | 业务码 |
 | 参数绑定 / 校验失败、缺少参数、类型不匹配、请求体无法解析 | 400 | `PARAMS_ERROR` / `PARAMS_LOSS` / `PARAMS_TRANSFER_ERROR` |
 | Spring MVC 自己的 404 / 405 / 415 等 | 沿用其状态码 | 状态名，如 `NOT_FOUND` |
 | 下游返回了错误响应（`RemoteCallException`） | 下游业务错误（4xx 且带业务码）透传；其余 502 | 透传的业务码 / `BAD_GATEWAY` |

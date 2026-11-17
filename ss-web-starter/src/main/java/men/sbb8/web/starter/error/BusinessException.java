@@ -6,7 +6,8 @@ import org.springframework.http.HttpStatusCode;
 
 /**
  * 业务异常，由 {@code GlobalExceptionHandler} 转成 {@code Resp}。
- * HTTP 状态码默认 200，业务失败通过 code 表达；需要时显式指定。
+ * HTTP 状态码取业务码的 {@link BusinessCode#getHttpStatus()}（默认 200，业务失败通过 code 表达），需要时在构造时显式指定覆盖；
+ * 没有枚举的 {@code (String code, String message)} 固定 200。
  * 业务码优先用 {@link BusinessCode}（枚举）；没有对应枚举时用 {@code (String code, String message)}。
  * 没有"只传消息"的构造：不带业务码的失败是系统异常（500），用无参构造或包装原因的构造。
  *
@@ -24,7 +25,7 @@ public class BusinessException extends RuntimeException {
      */
     public BusinessException(Throwable cause) {
         super(CommonCode.SYSTEM_ERROR.getMsg(), cause);
-        this.httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+        this.httpStatus = CommonCode.SYSTEM_ERROR.getHttpStatus();
         this.code = CommonCode.SYSTEM_ERROR.name();
         this.msg = CommonCode.SYSTEM_ERROR.getMsg();
     }
@@ -37,7 +38,7 @@ public class BusinessException extends RuntimeException {
     }
 
     public BusinessException(BusinessCode code, String message) {
-        this(HttpStatus.OK, code, message);
+        this(code.getHttpStatus(), code, message);
     }
 
     public BusinessException(String code, String message) {
@@ -48,7 +49,7 @@ public class BusinessException extends RuntimeException {
     }
 
     public BusinessException(BusinessCode code) {
-        this(HttpStatus.OK, code, code.getMsg());
+        this(code.getHttpStatus(), code, code.getMsg());
     }
 
     public BusinessException(BusinessCode code, HttpStatusCode httpStatus) {
@@ -56,6 +57,6 @@ public class BusinessException extends RuntimeException {
     }
 
     public BusinessException() {
-        this(HttpStatus.INTERNAL_SERVER_ERROR, CommonCode.SYSTEM_ERROR, CommonCode.SYSTEM_ERROR.getMsg());
+        this(CommonCode.SYSTEM_ERROR);
     }
 }

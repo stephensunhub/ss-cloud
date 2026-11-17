@@ -6,7 +6,6 @@ import men.sbb8.web.starter.error.BusinessException;
 import men.sbb8.web.starter.error.CommonCode;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.MethodParameter;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -54,8 +53,7 @@ public class UserInfoArgumentResolver implements HandlerMethodArgumentResolver {
         }
         String userId = request.getHeader(HEADER_USER_ID);
         if (required && (userId == null || userId.isBlank())) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, CommonCode.UNAUTHORIZED,
-                    CommonCode.UNAUTHORIZED.getMsg());
+            throw new BusinessException(CommonCode.UNAUTHORIZED);
         }
         return new UserInfo(
                 toInteger(request.getHeader(HEADER_CHANNEL_ID)),

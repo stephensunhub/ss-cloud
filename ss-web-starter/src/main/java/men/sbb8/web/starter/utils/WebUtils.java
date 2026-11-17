@@ -4,7 +4,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import men.sbb8.web.starter.error.BusinessException;
 import men.sbb8.web.starter.error.CommonCode;
 import men.sbb8.web.starter.resolver.UserInfoArgumentResolver;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -68,6 +67,6 @@ public final class WebUtils {
     }
 
     private static BusinessException unauthorized() {
-        return new BusinessException(HttpStatus.UNAUTHORIZED, CommonCode.UNAUTHORIZED, CommonCode.UNAUTHORIZED.getMsg());
+        return new BusinessException(CommonCode.UNAUTHORIZED);
     }
 }
