@@ -24,9 +24,13 @@ final class GrpcStatuses {
      * 下游 gRPC 调用的失败类型，不依赖 gRPC 的类，所以调用方在没有 gRPC 时也能引用
      */
     enum Failure {
-        /** 连不上：宕机、地址解析失败、连接中断 */
+        /**
+         * 连不上：宕机、地址解析失败、连接中断
+         */
         UNAVAILABLE,
-        /** 超过 deadline */
+        /**
+         * 超过 deadline
+         */
         TIMEOUT
     }
 
