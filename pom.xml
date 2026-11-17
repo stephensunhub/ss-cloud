@@ -18,6 +18,15 @@
     <name>ss-cloud</name>
     <description>ss-cloud 顶层 POM：统一管理 Java、Spring Boot、Spring Cloud 及第三方依赖版本</description>
 
+    <!-- 发布目标：GitHub Packages，由 .github/workflows/publish.yml 在推送 v* tag 时执行 mvn deploy -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/stephensunhub/ss-cloud</url>
+        </repository>
+    </distributionManagement>
+
     <modules>
         <module>ss-web-starter</module>
         <module>ss-grpc-core</module>
