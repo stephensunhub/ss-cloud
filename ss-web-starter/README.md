@@ -251,7 +251,15 @@ Order order = distributedLock.call("order:" + orderId, Duration.ofSeconds(3), ()
   key 不要带用户输入的任意长文本
 - **等待时间按业务能容忍的来定**：用户请求里别等太久（几秒），拿不到由调用方决定怎么办——`tryRun` 返回 `false`，
   或 `call` / `run` 抛 `LockNotAcquiredException` 再转成业务提示；不要无限等待
-- **锁只保证"同一时刻只有一个执行者"，不保证幂等**：拿到锁之后仍然要判断"这件事是不是已经做过"
+- **锁只保证"同一时刻只有一个执行者"，不保证幂等**：拿到锁之后仍然要判断"这件事是不是已经做过"。
+  starter **不提供**幂等工具：数据在数据库里，最终的判断只能以数据库为准（Redis 里的"已执行"标记和业务数据不在同一个事务里，总有对不上的窗口）。
+  做法是三层：**分布式锁挡并发 + 锁内查库判断 + 数据库唯一约束兜底**：
+  ```java
+  distributedLock.run("pay:" + orderId, Duration.ofSeconds(3), () -> payTxService.pay(orderId));
+  // payTxService.pay 是 @Transactional 方法：先查订单状态，已支付就直接返回；否则扣款并改状态。
+  // 订单号 / 流水号上有唯一约束，万一重复写入会失败而不是写成两条
+  ```
+- **定时任务不在 starter 里处理**：任务由 xxl-job 调度中心统一触发，每次只派给一个执行器；任务内部要互斥时直接用 `DistributedLock`
 - `action` 在调用线程里同步执行，不要在里面再把工作丢给别的线程后立刻返回（锁会在 `action` 返回时释放）
 
 ## 接口文档（OpenAPI）
