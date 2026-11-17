@@ -184,6 +184,31 @@ ss.web.client.propagate-user-headers: all       # 默认 all：所有分组都�
 - 需要互斥用 `DistributedLock`，不要用 `setIfAbsent` 自己拼锁（没有续期、没有重入、释放时容易误删别人的锁）
 
 
+### 其他数据结构（Hash / Set / ZSet / List / 计数器 / Pub/Sub）
+
+`@Cacheable` 只管"缓存方法返回值"这一种用法。队列、Hash、Set、ZSet、计数器、Pub/Sub 直接用 `redisTemplate`，
+starter **不封装**这些结构，也不提供 `RedisUtil` 之类的工具类（key 的命名、过期时间属于业务，各自管理）：
+
+```java
+redisTemplate.opsForHash().put("user:1", "profile", profile);       // field 是字符串，值是 JSON
+redisTemplate.opsForSet().add("online", userId);                    // 成员是 JSON
+redisTemplate.opsForZSet().add("rank", member, score);
+redisTemplate.opsForList().rightPush("tasks", task);                // 队列：rightPush + leftPop
+redisTemplate.opsForValue().increment("counter:" + id);             // 计数器
+redisTemplate.convertAndSend("channel", message);                   // 发布；订阅用 RedisMessageListenerContainer
+```
+
+以上在真实 Redis 上验证过（`RedisStructuresTest`）：Hash、Set、ZSet、List 的值读回来是原类型（对象要满足上面的类型白名单）。
+
+- **数字存成纯数字**（`5`），所以 `increment` 可用；读回来是 `Integer`，不要强转成 `Long`
+- **`String` 存成带引号的 JSON**（`"abc"`）。所以**同一个 key 只能由一种模板读写**：`StringRedisTemplate` 写的原文，用 `redisTemplate` 读会解析失败；
+  `redisTemplate` 写的字符串，`StringRedisTemplate` 读到的是带引号的内容。要和别的系统共享 key，用 `StringRedisTemplate` 并自己处理格式
+- **Pub/Sub 不保证送达**：只有"当时在线"的订阅者能收到，没有订阅者时消息直接丢弃（实测发布返回 0），没有持久化、确认、重试。
+  只适合丢了也无所谓的通知，比如本地缓存失效广播
+- **List 做队列没有确认机制**：取出消息后进程挂了，这条消息就丢了
+- **需要可靠消息不要用 Redis 自己拼**：Redis 里要用的话是 Streams（消费组、确认），但消息这一块还没有统一方案，先不要在业务里各自造
+- **这些结构在原生镜像里没有验证过**（原生镜像里只验证过 `redisTemplate` 的普通读写和 `@Cacheable`）；放进去的类型同样需要反射提示
+
 ## 分布式锁（Redisson）
 
 应用自己引入 `org.redisson:redisson` 和 `spring-boot-starter-data-redis`（starter 里都是可选依赖，Redisson 版本由父 POM 管理）后，会按 `spring.data.redis.*`
