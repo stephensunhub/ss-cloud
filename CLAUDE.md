@@ -73,6 +73,8 @@ ss-cloud 是微服务的"规范 starter"集合：应用继承本 POM、按需引
 - `UserInfo` 来自网关透传的请求头，**直接信任、不验签**，所以服务只能经网关访问；用户头会透传给下游内部服务（含异步线程，`ss.web.client.propagate-user-headers`）
 - 分布式锁：业务代码只依赖 `DistributedLock`（`tryRun` / `call` / `run`），**不要直接用 `RedissonClient` / `RLock`**，换实现时提供另一个 `DistributedLock` Bean。Redisson 实现靠看门狗续期，创建时就连 Redis
 - Redis 序列化：key 字符串、value JSON（带 `@class`，类型白名单 `men.sbb8.*` 等）
+- Spring Cache：值用同一个 JSON 序列化器；**默认 30 分钟过期**（`ss-web-defaults.yaml` 里的 `spring.cache.redis.time-to-live`，Boot 默认永不过期），个别缓存项通过 `CacheTtlResolver` Bean 按 key/值定制，`null` 用默认值、`Duration.ZERO` 永不过期。注解做不到"每次调用单独指定过期时间"，这种情况用 `redisTemplate` 直接写。starter 不封装 Hash/Set/ZSet/Pub/Sub 等结构，也不提供 `RedisUtil` 之类的工具类，业务直接用 `redisTemplate`；同一个 key 不要混用 `redisTemplate` 和 `StringRedisTemplate`（`String` 在 `redisTemplate` 里存成带引号的 JSON）
+- 测试类路径上有 JCache 实现时 Boot 会优先选它，缓存测试要写 `spring.cache.type=redis`（`CacheTtlEndToEndTest`）
 - 管理端口：web（prod）与 gRPC 的 Prometheus 抓取都是 `:9091/metrics`，没有认证，访问控制交给部署层（NetworkPolicy）
 
 ## 测试要点
