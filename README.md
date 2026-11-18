@@ -44,7 +44,25 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 </dependencies>
 ```
 
-- **目前版本只能从本地构建安装**（在本仓库执行 `mvn install`），还没有发布到制品库，别的机器上的项目暂时引入不了
+- **依赖从自建 Maven 私服拉取**：`https://maven.sbb8.men/releases`（匿名可读，拉依赖不需要任何凭据）。应用的 `pom.xml` 里加上仓库即可
+  （插件也要声明，因为 parent 来自这个仓库）：
+
+  ```xml
+  <repositories>
+      <repository>
+          <id>sbb8-maven</id>
+          <url>https://maven.sbb8.men/releases</url>
+      </repository>
+  </repositories>
+  <pluginRepositories>
+      <pluginRepository>
+          <id>sbb8-maven</id>
+          <url>https://maven.sbb8.men/releases</url>
+      </pluginRepository>
+  </pluginRepositories>
+  ```
+
+  升级 ss-cloud 版本后加 `-U` 强制刷新
 - 目前**没有独立的 BOM**。如果某个服务已经有别的公司级 Parent、不能继承 `ss-cloud`，需要时再拆出 `ss-dependencies`，
   让它能在自己的 Parent 下用 `<scope>import</scope>` 导入
 
@@ -98,6 +116,63 @@ gRPC 服务**不带 web 容器**（没有 Tomcat、Spring MVC），web 服务和
 ```bash
 ./mvnw versions:set -Pbenchmark -DnewVersion=2026.11.1.0 -DgenerateBackupPoms=false
 ```
+
+## 发布
+
+发布到自建 Maven 私服 `https://maven.sbb8.men`（Reposilite，部署在 `/opt/reposilite`，nginx 反向代理）。
+**匿名可读，写入需要令牌**，所以不要往里放敏感内容。两个仓库：
+
+| 仓库 | 地址 | 用途 |
+|---|---|---|
+| `releases` | `https://maven.sbb8.men/releases` | 正式版本（版本号不带 `-SNAPSHOT`） |
+| `snapshots` | `https://maven.sbb8.men/snapshots` | 快照版本（版本号以 `-SNAPSHOT` 结尾） |
+
+Maven 按版本号自动选仓库，地址已写在根 `pom.xml` 的 `distributionManagement` 里，server id 是 **`sbb8-maven`**。
+
+**一次性准备：配发布凭据。** 向管理员要部署令牌（用户名 `deploy`，只对 `releases`、`snapshots` 有写权限），
+写进 `~/.m2/settings.xml`（令牌不进仓库）：
+
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>sbb8-maven</id>
+            <username>deploy</username>
+            <password>令牌密码</password>
+        </server>
+    </servers>
+</settings>
+```
+
+注意：`./mvnw` 用的是 wrapper 下载的 Maven，**不读系统 Maven 安装目录下的 `conf/settings.xml`**，只读 `~/.m2/settings.xml`，
+或命令行带 `-s <路径>`。
+
+**手工发布：**
+
+```bash
+./mvnw -B clean deploy -DskipTests        # 发布所有模块（父 POM 和 4 个 starter）
+```
+
+发布前先确认两点：
+
+- 版本号已经升好（见上面"构建"一节的 `versions:set`），并已提交。
+- **正式版本不覆盖、不重发**：同一个版本号发布过就不要再发，哪怕只改了一点，也升一个新版本号。
+  应用的本地仓库和 CI 缓存里已经有旧文件，覆盖了也不会被刷新，反而造成"同一版本内容不同"。
+
+发布后验证（匿名即可）：
+
+```bash
+curl -I https://maven.sbb8.men/releases/men/sbb8/ss-web-starter/<版本号>/ss-web-starter-<版本号>.pom   # 返回 200
+```
+
+**自动发布：** 推送 `v*` 的 tag 会触发 `.github/workflows/publish.yml`，执行同样的 `mvn deploy`。
+需要在 GitHub 仓库的 Secrets 里配 `MAVEN_USERNAME`（`deploy`）和 `MAVEN_PASSWORD`（部署令牌密码）。
+
+**删除或撤回**（发布错了）：用管理员令牌登录 `https://maven.sbb8.men` 的管理页删除对应版本目录，
+然后升新版本号重发；已经被别人拉走的旧版本无法收回。
+
+**私服运维**（服务器上）：`systemctl status|restart reposilite`；管理令牌在 `/opt/reposilite/reposilite.env`（600 权限）；
+数据在 `/opt/reposilite/data`，要备份的就是这个目录；nginx 配置是 `/etc/nginx/conf.d/maven.conf`。
 
 ## 已定的设计决策
 

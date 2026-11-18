@@ -18,13 +18,19 @@
     <name>ss-cloud</name>
     <description>ss-cloud 顶层 POM：统一管理 Java、Spring Boot、Spring Cloud 及第三方依赖版本</description>
 
-    <!-- 发布目标：GitHub Packages，由 .github/workflows/publish.yml 在推送 v* tag 时执行 mvn deploy -->
+    <!-- 发布目标：自建 Maven 私服 https://maven.sbb8.men（Reposilite，匿名可读，写入需要令牌）；
+         认证见 ~/.m2/settings.xml 里 id 为 sbb8-maven 的 server，具体做法见 README"发布" -->
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/stephensunhub/ss-cloud</url>
+            <id>sbb8-maven</id>
+            <name>sbb8 Maven Releases</name>
+            <url>https://maven.sbb8.men/releases</url>
         </repository>
+        <snapshotRepository>
+            <id>sbb8-maven</id>
+            <name>sbb8 Maven Snapshots</name>
+            <url>https://maven.sbb8.men/snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <modules>
