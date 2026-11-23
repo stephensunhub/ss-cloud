@@ -153,6 +153,9 @@ ss.web.client.propagate-user-headers: all       # 默认 all：所有分组都�
   容器启动后使用统一配置的 `JsonMapper`；能注入的地方直接注入 `JsonMapper`
 - 时间点用 `Instant` / `OffsetDateTime`，输出 ISO-8601 带时区；`LocalDateTime` 输出 ISO，
   读取兼容 `2026-01-02T03:04:05` 和 `2026-01-02 03:04:05`，字段上的 `@JsonFormat` 照常生效
+- 金额（`BigDecimal`）输出**十进制字符串**（`"398.00"`），避免前端按双精度解析丢精度；用 `toPlainString()`，
+  不出现科学计数法，**小数位原样保留**（`398.00` 不会变成 `398`）。小数位由业务代码在 DTO 里 `setScale` 决定，
+  starter 不统一补零或舍入；读取不改，字符串和数字都接受。**所有 `BigDecimal` 字段都受影响**，不只是金额
 - 默认：时区 UTC、值为 `null` 的字段不输出、JSON 里多余的属性忽略、`@RequestParam` 的时间类型按 ISO 绑定
 - `JsonNode` 存数据库：JPA 用 `@Convert(converter = JsonNodeConverter.class)`；
   MyBatis 配 `mybatis.type-handlers-package=men.sbb8.web.starter.persistence`
